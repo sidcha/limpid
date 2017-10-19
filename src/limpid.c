@@ -31,10 +31,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
 #include <pthread.h>
 
-#define BUFSIZE 1024
+#include "read_line.h"
+
+#define BUFSIZE 256
 #define PS1 "shell> "
 
 volatile int command_ready;
@@ -160,58 +161,24 @@ void process_command()
 	command_ready = 0;
 }
 
-char *get_line() {
-	char *line = malloc(100), *linep = line;
-	size_t lenmax = 100, len = lenmax;
-	int c;
-
-	if(line == NULL)
-		return NULL;
-
-	while(1) {
-		c = fgetc(stdin);
-		fputc(c, stdin);
-
-		if(c == EOF || c == '\n' || c == '\r')
-			break;
-
-		if(--len == 0) {
-			len = lenmax;
-			char * linen = realloc(linep, lenmax *= 2);
-
-			if(linen == NULL) {
-				free(linep);
-				return NULL;
-			}
-			line = linen + (line - linep);
-			linep = linen;
-		}
-		*line++ = c;
-	}
-	*line = '\0';
-	return linep;
-}
-
 void *cli_server(void *arg)
 {
 	int len;
-	char *raw_line, *line;
+	char *line;
 
 	while (1) {
-		printf(PS1);
-		raw_line = get_line();
+		line = read_line(PS1);
 
-		if (raw_line == NULL) continue;
+		if (line == NULL) continue;
 
-		line = raw_line;
 		len = strlen(line);
 
 		if(len == 0) continue;
 
 		len = len < BUFSIZE ? len : BUFSIZE-1; 
-		strncpy((char *)command_buf, line, len);
+		strncpy(command_buf, line, len);
 		command_buf[len] = 0;
-		free(raw_line);
+		free(line);
 		command_ready = 1;
 		
 		// wait for the command to be read.
@@ -234,6 +201,7 @@ int main(int argc, char *argv[])
 		process_command();
 		usleep(100);
 	}
+
 	return 0;
 }
 

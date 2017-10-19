@@ -27,18 +27,23 @@
 ##############################################################################/
 
 
+CC      = gcc
 CFLAGS  = -Wall
 LDFLAGS = -pthread
-OBJ     = limpid.o
+OBJ     = obj/limpid.o obj/read_line.o
 
-all: limpid
+all: dirs limpid
+
+dirs:
+	@mkdir obj
 
 limpid: $(OBJ)
 	$(CC) -o $@ $(LDFLAGS) $^
 
 clean:
-	rm -f *.o limpid
-%.o: %.c
+	rm -rf obj/ limpid
+
+obj/%.o: src/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 .PHONY: all limmpd clean
