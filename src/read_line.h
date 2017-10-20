@@ -31,6 +31,7 @@
 
 #define LINE_LENGTH 128
 
+void read_line_reset();
 char *read_line(const char *prompt);
 
 #endif

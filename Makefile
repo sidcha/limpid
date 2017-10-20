@@ -35,7 +35,7 @@ OBJ     = obj/limpid.o obj/read_line.o
 all: dirs limpid
 
 dirs:
-	@mkdir obj
+	@mkdir -p obj
 
 limpid: $(OBJ)
 	$(CC) -o $@ $(LDFLAGS) $^

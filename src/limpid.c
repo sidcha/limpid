@@ -32,6 +32,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <signal.h>
 
 #include "read_line.h"
 
@@ -187,9 +188,21 @@ void *cli_server(void *arg)
 	return NULL;
 }
 
+void sig_handler(int signo)
+{
+	read_line_reset();
+	exit(1);
+}
+
 int main(int argc, char *argv[])
 {
 	int tick = 0;
+
+	if (signal(SIGINT, sig_handler) == SIG_ERR) {
+		fprintf(stderr, "Error: Unable to catch SIGINT\n");
+		exit(1);
+	}
+
 	pthread_t server_thread;
 	pthread_create(&server_thread, NULL, cli_server, NULL);
 
