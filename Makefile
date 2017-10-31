@@ -28,23 +28,28 @@
 
 
 CC      = gcc
-CFLAGS  = -Wall
-LDFLAGS = -pthread
-OBJ     = obj/limpid.o obj/read_line.o
+CFLAGS  = -Wall -Iinclude
+LDFLAGS = -pthread -Llib -llimpid
 
-all: dirs limpid
+all: dirs lib/liblimpid.a limpid sample_app
 
 dirs:
-	@mkdir -p obj
+	@mkdir -p obj lib
 
-limpid: $(OBJ)
-	$(CC) -o $@ $(LDFLAGS) $^
+limpid: obj/client.o
+	$(CC) -o $@ $^ $(LDFLAGS)
+
+sample_app: obj/sample_app.o
+	$(CC) -o $@ $^ $(LDFLAGS)
+
+lib/liblimpid.a: obj/limpid.o obj/read_line.o obj/string.o
+	$(AR) rcs -o $@ $^
 
 clean:
-	rm -rf obj/ limpid
+	@rm -rf obj/* lib/* limpid sample_app
 
 obj/%.o: src/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-.PHONY: all limmpd clean
+.PHONY: all limmpd sample_app clean
 

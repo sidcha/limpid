@@ -1,17 +1,17 @@
 /******************************************************************************
-  
+
                   Copyright (c) 2017 Siddharth Chandrasekaran
-  
+
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
   in the Software without restriction, including without limitation the rights
   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
   copies of the Software, and to permit persons to whom the Software is
   furnished to do so, subject to the following conditions:
-  
+
   The above copyright notice and this permission notice shall be included in all
   copies or substantial portions of the Software.
-  
+
   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -19,11 +19,11 @@
   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
   SOFTWARE.
-  
+
     Author : Siddharth Chandrasekaran
     Email  : siddharth@embedjournal.com
     Date   : Thu Oct 19 06:02:01 IST 2017
-  
+
 ******************************************************************************/
 
 #include <ctype.h>
@@ -31,64 +31,26 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
 #include <pthread.h>
-#include <signal.h>
+#include <sys/types.h>
+#include <sys/un.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
 
-#include "read_line.h"
+#include <limpid.h>
 
-#define BUFSIZE 256
-#define PS1 "shell> "
+#define is_char(x) (((x) >= 'A' && (x) <= 'Z') || ((x) >= 'a' && (x) <='z'))
+#define to_lower(x) do { if (is_char(x)) { x |= 0x20 } } while(0)
 
-volatile int command_ready;
-char command_buf[BUFSIZE];
-
-enum {
-	CLICMD_HELP,
-	CLICMD_PING,
-	CLICMD_EXIT,
-	CLICMD_SENTINEL
-};
-
-struct cli_cmd {
+struct limpid_cmd_s {
 	char *cmd_str;
-	int (*cmd_handler)(int argc, char *argv[]);
+	int (*cmd_handler)(int argc, char *argv[], string_t **s);
 };
 
-int cmd_ping(int argc, char *argv[]);
-int cmd_help(int argc, char *argv[]);
-int cmd_exit(int argc, char *argv[]);
+struct limpid_cmd_s *limpid_cmd[LIMPID_MAX_COMMANDS];
+int limpid_num_cmds;
 
-struct cli_cmd g_cli_cmd[CLICMD_SENTINEL] = {
-	[CLICMD_HELP] = { "help", cmd_help },
-	[CLICMD_PING] = { "ping", cmd_ping },
-	[CLICMD_EXIT] = { "exit", cmd_exit },
-};
-
-int cmd_ping(int argc, char *argv[])
-{
-	int i;
-	printf("pong\n");
-	for (i=0; i<argc; i++) {
-		printf("[%d] %s\n", i, argv[i]);
-	}
-	return 0;
-}
-
-int cmd_help(int argc, char *argv[])
-{
-	int i;
-	printf("Commands: \n");
-	for (i=0; i<CLICMD_SENTINEL; i++) {
-		printf("%s\n", g_cli_cmd[i].cmd_str);
-	}
-	return 0;
-}
-
-int cmd_exit(int argc, char *argv[])
-{
-	exit(0);
-	return 0;
-}
 static int set_args(char *args, char **argv)
 {
 	int count = 0;
@@ -104,13 +66,12 @@ static int set_args(char *args, char **argv)
 	return count;
 }
 
-char **parse_args(char *args, int *argc)
+static char **parse_args(char *args, int *argc)
 {
 	char **argv = NULL;
-	int    argn = 0;
+	int argn = 0;
 
-	if (args && *args
-			&& (args = strdup(args))
+	if (args && *args && (args = strdup(args))
 			&& (argn = set_args(args,NULL))
 			&& (argv = malloc((argn+1) * sizeof(char *)))) {
 		*argv++ = args;
@@ -123,98 +84,231 @@ char **parse_args(char *args, int *argc)
 	return argv;
 }
 
-void free_parsed_args(char **argv)
+static void free_parsed_args(char **argv)
 {
 	if (argv) {
 		free(argv[-1]);
 		free(argv-1);
-	} 
+	}
 }
 
-void process_command()
+static int limpid_process_cmd(limpid_t *ctx, string_t *cmd)
 {
-	char **av;
-	int cmd_num, ac;
+	string_t *resp=NULL;
+	lchunk_t *c;
+	char *p=NULL, **av, cmd_buf[256];
+	int i, ac, len=0;
 
-	if (command_ready == 0)
-		return;
-
-	av = parse_args(command_buf, &ac);
+	strncpy(cmd_buf, cmd->arr, cmd->len);
+	cmd_buf[cmd->len] = 0;
+	av = parse_args(cmd->arr, &ac);
 	if (ac < 1) {
-		command_ready = 0;
-		return;
+		fprintf(stderr, "limpid: error parsing command line\n");
+		return -1;
 	}
 
-	for (cmd_num=0; cmd_num<CLICMD_SENTINEL; cmd_num++) {
-		if (strcmp(av[0], g_cli_cmd[cmd_num].cmd_str) == 0)
+	for (i=0; i<limpid_num_cmds; i++) {
+		if (strcmp(av[0], limpid_cmd[i]->cmd_str) == 0) {
+			limpid_cmd[i]->cmd_handler(ac-1, &av[1], &resp);
 			break;
+		}
 	}
 
-	if (cmd_num >= CLICMD_SENTINEL) {
-		fprintf(stderr, "shell: %s unknown command\n", command_buf);
-		command_ready = 0;
-		return;
+	if (resp) {
+		p = resp->arr;
+		len = resp->len;
 	}
 
-	// invoke handler.
-	g_cli_cmd[cmd_num].cmd_handler(ac-1, &av[1]);
+	c = limpid_make_chunk(TYPE_RESPONSE, p, len);
+	limpid_send(ctx, c);
+
+	if (resp) free(resp);
 	free_parsed_args(av);
-	command_ready = 0;
+	return 0;
 }
 
-void *cli_server(void *arg)
+int limpid_create_command(const char* cmd_str, int (*handler)(int, char **, string_t **))
 {
-	int len;
-	char *line;
+	int id;
+	struct limpid_cmd_s *cmd;
+
+	if(limpid_num_cmds >= LIMPID_MAX_COMMANDS)
+		return -1;
+
+	cmd = malloc(sizeof(struct limpid_cmd_s));
+	if (cmd == NULL) {
+		fprintf(stderr, "limpid: failed to alloc memory for command");
+		return -1;
+	}
+
+	id = limpid_num_cmds++;
+	cmd->cmd_str = strdup(cmd_str);
+	cmd->cmd_handler = handler;
+	limpid_cmd[id] = cmd;
+	return 0;
+}
+
+static void *limpid_listener(void *arg)
+{
+	struct sockaddr_un sock_serv, cli_addr;
+
+	limpid_t *ctx = (limpid_t *) arg;
+
+	if ((ctx->fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+		fprintf(stderr, "Error: failed to created server fd\n");
+		return NULL;
+	}
+
+	sock_serv.sun_family = AF_UNIX;
+	strcpy(sock_serv.sun_path, ctx->path);
+	unlink(ctx->path);
+
+	socklen_t len = sizeof(sock_serv.sun_family) + strlen(ctx->path);
+
+	if (bind(ctx->fd, (const struct sockaddr *)&sock_serv, len) < 0) {
+		fprintf(stderr, "limpid: failed at bind!\n");
+		return NULL;
+	}
+
+	if (listen(ctx->fd, 5) < 0) {
+		fprintf(stderr, "limpid: failed at listen!\n");
+		return NULL;
+	}
 
 	while (1) {
-		line = read_line(PS1);
+		ctx->client_fd = accept(ctx->fd, (struct sockaddr *)&cli_addr, &len);
+		if (ctx->client_fd < 0) {
+			perror("limpid: failed at accept");
+			continue;
+		}
 
-		if (line == NULL) continue;
+		lchunk_t *c;
+		if (limpid_receive(ctx, &c) == 0) {
+			limpid_process_cmd(ctx, &c->str);
+			free(c);
+		}
 
-		len = strlen(line);
-
-		if(len == 0) continue;
-
-		len = len < BUFSIZE ? len : BUFSIZE-1; 
-		strncpy(command_buf, line, len);
-		command_buf[len] = 0;
-		free(line);
-		command_ready = 1;
-		
-		// wait for the command to be read.
-		while (command_ready == 1);
+		close(ctx->client_fd);
 	}
 	return NULL;
 }
 
-void sig_handler(int signo)
+limpid_t *limpid_server_init(const char *path)
 {
-	read_line_reset();
-	exit(1);
+	limpid_t *ctx = malloc(sizeof(limpid_t));
+	if (ctx == NULL)
+		return NULL;
+
+	ctx->type = LIMPID_SERVER;
+	ctx->path = strdup(path);
+	pthread_t server_thread;
+	pthread_create(&server_thread, NULL, limpid_listener, (void *)ctx);
+	return ctx;
 }
 
-int main(int argc, char *argv[])
+limpid_t *limpid_connnect(const char *path)
 {
-	int tick = 0;
+	socklen_t sock_len;
+	struct sockaddr_un serv_addr;
 
-	if (signal(SIGINT, sig_handler) == SIG_ERR) {
-		fprintf(stderr, "Error: Unable to catch SIGINT\n");
-		exit(1);
+	limpid_t *ctx = malloc(sizeof(limpid_t));
+	if (ctx == NULL)
+		return NULL;
+
+	ctx->type = LIMPID_CLIENT;
+	ctx->path = NULL;
+
+	if ((ctx->fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+		free(ctx);
+		return NULL;
 	}
 
-	pthread_t server_thread;
-	pthread_create(&server_thread, NULL, cli_server, NULL);
+	serv_addr.sun_family = AF_UNIX;
+	strcpy(serv_addr.sun_path, path);
 
-	while (1) {
-		tick++;
-		if (tick > 10) {
-			tick = 0;
+	sock_len = sizeof(serv_addr.sun_family) + strlen(serv_addr.sun_path);
+	if (connect(ctx->fd, (const struct sockaddr *)&serv_addr, sock_len) != 0) {
+		close(ctx->fd);
+		free(ctx);
+		return NULL;
+	}
+	ctx->path = strdup(path);
+	return ctx;
+}
+
+void limpid_disconnect(limpid_t *ctx)
+{
+	close(ctx->fd);
+	if (ctx->path)
+		free(ctx->path);
+	free(ctx);
+}
+
+lchunk_t *limpid_make_chunk(int type, char *buf, int len)
+{
+	lchunk_t *c = malloc(sizeof(lchunk_t)+len);
+
+	if (c == NULL)
+		return NULL;
+
+	c->type = type;
+	c->str.len = len;
+	c->str.maxLen = len;
+	memcpy(c->str.arr, buf, len);
+
+	return c;
+}
+
+int limpid_send(limpid_t *ctx, lchunk_t *c)
+{
+	int ret = 0, fd, len;
+
+	if (ctx == NULL || c == NULL)
+		return -1;
+
+	len = sizeof(lchunk_t) + c->str.len;
+
+	fd = (ctx->type == LIMPID_SERVER) ? ctx->client_fd : ctx->fd;
+
+	if ((ret = write(fd, c, len)) < 0) {
+		fprintf(stderr, "Error at write");
+	}
+
+	free(c);
+	return ret;
+}
+
+int limpid_receive(limpid_t *ctx, lchunk_t **c)
+{
+	int fd;
+	volatile int read1, read2=-1;
+
+	fd = (ctx->type == LIMPID_SERVER) ? ctx->client_fd : ctx->fd;
+
+	do {
+		// Prevent partial reads by waiting for data
+		// to stabilize.
+		ioctl(fd, FIONREAD, &read1);
+		if (read1 > 0) {
+			usleep(100);
+			ioctl(fd, FIONREAD, &read2);
 		}
-		process_command();
-		usleep(100);
+		usleep(10);
+	} while (read1 != read2);
+
+	void *read_data = malloc(read1);
+
+	if (read_data == NULL) {
+		fprintf(stderr, "Alloc error!\n");
+		return -1;
 	}
 
+	if ((read(fd, read_data, read1)) < 0) {
+		fprintf(stderr, "Error at read\n");
+		return -1;
+	}
+
+	*c = (lchunk_t *) read_data;
 	return 0;
 }
 

@@ -1,17 +1,17 @@
 /******************************************************************************
-  
+
                   Copyright (c) 2017 Siddharth Chandrasekaran
-  
+
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
   in the Software without restriction, including without limitation the rights
   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
   copies of the Software, and to permit persons to whom the Software is
   furnished to do so, subject to the following conditions:
-  
+
   The above copyright notice and this permission notice shall be included in all
   copies or substantial portions of the Software.
-  
+
   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -19,11 +19,11 @@
   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
   SOFTWARE.
-  
+
     Author : Siddharth Chandrasekaran
     Email  : siddharth@embedjournal.com
     Date   : Thu Oct 19 06:02:01 IST 2017
-  
+
 ******************************************************************************/
 
 #include <stdio.h>
@@ -32,24 +32,27 @@
 #include <unistd.h>
 #include <termios.h>
 
-#include "read_line.h"
+#include <limpid.h>
 
 #define tty_erase_line() write(1, "\033[K", 3)
 #define tty_save_cursor() write(1, "\033[s", 3)
 #define tty_restore_cursor() write(1, "\033[u", 3)
-#define tty_move_cursor_forward(x) fprintf(stdout, "\033[%dC", x); fflush(stdout)
-#define tty_move_cursor_backward(x) fprintf(stdout, "\033[%dD", x); fflush(stdout)
-#define tty_set_cursor(r, c) fprintf(stdout, "\033[%d;%dH", r, c); fflush(stdout)
 #define tty_send_newline() write(1, "\r\n", 2)
 #define tty_send_string(x) write(1, x, strlen(x))
 #define tty_flush() fflush(stdout)
 #define tty_qeury_cursor() write(1, "\033[6n", 4)
 #define tty_put_char(c) write(1, c, 1)
+#define tty_move_cursor_forward(x) \
+	do{fprintf(stdout, "\033[%dC", x);fflush(stdout);}while(0)
+#define tty_move_cursor_backward(x) \
+	do{fprintf(stdout, "\033[%dD", x); fflush(stdout);}while(0)
+#define tty_set_cursor(r, c) \
+	do{fprintf(stdout, "\033[%d;%dH", r, c); fflush(stdout);}while(0)
 
 static int start_row, start_col, backup_sate;
 struct termios temios_backup;
 
-int tty_get_cursor(int *row, int *col)
+static int tty_get_cursor(int *row, int *col)
 {
 	int retval=-1;
 	char *p, buf[8];
@@ -74,6 +77,45 @@ int tty_get_cursor(int *row, int *col)
 	return retval;
 }
 
+static void tty_set_sane()
+{
+	if (backup_sate) {
+		// Put back tty to sane.
+		if(tcsetattr(0, TCSAFLUSH, &temios_backup) < 0) {
+			fprintf(stderr, "Error: Cannot reset terminal!\n");
+			return;
+		}
+	}
+}
+
+static int tty_set_raw()
+{
+	// Set raw mode on stdin.
+	struct termios new;
+
+	if (backup_sate == 0) {
+		if(tcgetattr(0, &temios_backup) < 0) {
+			fprintf(stderr, "Error: Unable to backup termios.\n");
+			return -1;
+		}
+		backup_sate = 1;
+	}
+
+	new = temios_backup;
+	new.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
+	new.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
+	new.c_cflag &= ~(CSIZE | PARENB);
+	new.c_cflag |= CS8;
+	new.c_oflag &= ~(OPOST);
+	new.c_cc[VMIN] = 1;
+	new.c_cc[VTIME] = 0;
+
+	if(tcsetattr(0, TCSAFLUSH, &new) < 0)
+		return -1;
+
+	return 0;
+}
+
 static inline void redraw_line(const char *buf)
 {
 	tty_save_cursor();
@@ -84,7 +126,7 @@ static inline void redraw_line(const char *buf)
 	tty_flush();
 }
 
-/* 
+/*
 ** Return 1 to continue parse loop, 0 to proceed.
 */
 static int parse_csi(int *state, int c, char *buf, int *cursor)
@@ -129,7 +171,7 @@ static int parse_csi(int *state, int c, char *buf, int *cursor)
 	return 0;
 }
 
-char *read_line_raw()
+static char *read_line_raw()
 {
 	int i, c, tmp;
 	int csi_state = 0, tab_count = 0, cursor = 0;
@@ -140,9 +182,9 @@ char *read_line_raw()
 		return NULL;
 	}
 
-	char *buf = calloc(LINE_LENGTH, sizeof(char));
+	char *buf = calloc(LIMPID_READ_LINE_MAXLEN, sizeof(char));
 	if (buf == NULL) {
-		fprintf(stderr, "Error: unable to allocate %d bytes\n", LINE_LENGTH);
+		fprintf(stderr, "Error: unable to allocate memory\n");
 		return NULL;
 	}
 
@@ -221,13 +263,13 @@ char *read_line_raw()
 		}
 
 		if (c < 0x20 && c > 0x7E) {
-			// Un-handled, non-printable characters.	
+			// Un-handled, non-printable characters.
 			continue;
 		}
 
 		// Maxlen violation. Truncate and exit.
-		if (strlen(buf) >= LINE_LENGTH) {
-			buf[LINE_LENGTH-1] = 0;
+		if (strlen(buf) >= LIMPID_READ_LINE_MAXLEN) {
+			buf[LIMPID_READ_LINE_MAXLEN-1] = 0;
 			break;
 		}
 
@@ -253,7 +295,7 @@ char *read_line_raw()
 		// insert c but not tailing '\0' as we
 		// expect it to be already present.
 		buf[cursor++] = c;
-		// We just added one character. 
+		// We just added one character.
 		// move the cursor forward once.
 		tty_move_cursor_forward(1);
 
@@ -266,45 +308,6 @@ char *read_line_raw()
 	}
 
 	return buf;
-}
-
-static void tty_set_sane()
-{
-	if (backup_sate) {
-		// Put back tty to sane.
-		if(tcsetattr(0, TCSAFLUSH, &temios_backup) < 0) {
-			fprintf(stderr, "Error: Cannot reset terminal!\n");
-			return;
-		}
-	}
-}
-
-static int tty_set_raw()
-{
-	// Set raw mode on stdin.
-	struct termios new;
-
-	if (backup_sate == 0) {
-		if(tcgetattr(0, &temios_backup) < 0) {
-			fprintf(stderr, "Error: Unable to backup termios.\n");
-			return -1;
-		}
-		backup_sate = 1;
-	}
-
-	new = temios_backup;
-	new.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
-	new.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
-	new.c_cflag &= ~(CSIZE | PARENB);
-	new.c_cflag |= CS8;
-	new.c_oflag &= ~(OPOST);
-	new.c_cc[VMIN] = 1;
-	new.c_cc[VTIME] = 0;
-
-	if(tcsetattr(0, TCSAFLUSH, &new) < 0)
-		return -1;
-
-	return 0;
 }
 
 void read_line_reset()
@@ -322,11 +325,10 @@ char *read_line(const char *prompt)
 	}
 
 	tty_send_string(prompt);
-	
+
 	line = read_line_raw();
 
 	tty_set_sane();
 
 	return line;
 }
-

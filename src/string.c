@@ -1,17 +1,17 @@
 /******************************************************************************
-  
+
                   Copyright (c) 2017 Siddharth Chandrasekaran
-  
+
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
   in the Software without restriction, including without limitation the rights
   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
   copies of the Software, and to permit persons to whom the Software is
   furnished to do so, subject to the following conditions:
-  
+
   The above copyright notice and this permission notice shall be included in all
   copies or substantial portions of the Software.
-  
+
   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -19,19 +19,73 @@
   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
   SOFTWARE.
-  
+
     Author : Siddharth Chandrasekaran
     Email  : siddharth@embedjournal.com
     Date   : Thu Oct 19 06:02:01 IST 2017
-  
+
 ******************************************************************************/
 
-#ifndef _READ_LINE_H
-#define _READ_LINE_H
+#include <stdio.h>
+#include <stdarg.h>
+#include <stdlib.h>
 
-#define LINE_LENGTH 128
+#include <limpid.h>
 
-void read_line_reset();
-char *read_line(const char *prompt);
+string_t *new_string(int len)
+{
+	string_t *s = malloc(sizeof(string_t) + len);
+	if (s == NULL)
+		return s;
 
-#endif
+	s->maxLen = len;
+	s->len = 0;
+	return s;
+}
+
+int string_printf(string_t *str, char *mode, const char *fmt, ...)
+{
+	int ret;
+	va_list (args);
+	va_start(args, fmt);
+	int st = (mode[0] != 'a') ? 0 : str->len;
+	ret = vsnprintf(str->arr + st, str->maxLen - st, fmt, args);
+	va_end(args);
+	if ((str->len + ret) >= str->maxLen) {
+		str->len = str-> maxLen;
+	} else {
+		str->len += ret;
+		str->arr[str->len] = 0;
+	}
+	return ret;
+}
+
+int string_append(string_t *str, char *mode, char *buf, int len)
+{
+	if ( str->len >= str->maxLen || str->len < 0)
+		return -1;
+
+	if (mode[0] == 'f')
+		len = str->maxLen - str->len;
+
+	if ((str->len + len) > str->maxLen)
+		return -1;
+
+	int i, ovf=0;
+	for (i=0; i<len; i++) {
+		if (ovf) break;
+		str->arr[str->len] = buf[i];
+		str->len++;
+		if(str->len >= str->maxLen)
+			ovf = 1;
+	}
+
+	if (!ovf) {
+		/* We'll try to null terminate if the string hasn't
+		 * already over flown. This is only a added feature
+		 * so we won't be policing it.
+		 */
+		str->arr[str->len] = 0;
+	}
+	return i;
+}
