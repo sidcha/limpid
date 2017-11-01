@@ -1,4 +1,3 @@
-###############################################################################
 # 
 #                 Copyright (c) 2017 Siddharth Chandrasekaran
 # 
@@ -24,10 +23,8 @@
 #   Email  : siddharth@embedjournal.com
 #   Date   : Thu Oct 19 06:02:01 IST 2017
 # 
-##############################################################################/
 
 
-CC      = gcc
 CFLAGS  = -Wall -Iinclude
 LDFLAGS = -pthread -Llib -llimpid
 
