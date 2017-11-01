@@ -35,13 +35,12 @@
 #include <limpid.h>
 
 #define tty_erase_line() write(1, "\033[K", 3)
-#define tty_save_cursor() write(1, "\033[s", 3)
-#define tty_restore_cursor() write(1, "\033[u", 3)
 #define tty_send_newline() write(1, "\r\n", 2)
 #define tty_send_string(x) write(1, x, strlen(x))
 #define tty_flush() fflush(stdout)
 #define tty_qeury_cursor() write(1, "\033[6n", 4)
 #define tty_put_char(c) write(1, c, 1)
+#define tty_clear_screen() write(1, "\033[2J", 4)
 #define tty_move_cursor_forward(x) \
 	do{fprintf(stdout, "\033[%dC", x);fflush(stdout);}while(0)
 #define tty_move_cursor_backward(x) \
@@ -49,7 +48,8 @@
 #define tty_set_cursor(r, c) \
 	do{fprintf(stdout, "\033[%d;%dH", r, c); fflush(stdout);}while(0)
 
-static int start_row, start_col, backup_sate;
+char *prompt;
+static int start_row, start_col, save_row, save_col, backup_sate;
 struct termios temios_backup;
 
 static int tty_get_cursor(int *row, int *col)
@@ -75,6 +75,16 @@ static int tty_get_cursor(int *row, int *col)
 	} while (0);
 
 	return retval;
+}
+
+static inline void tty_save_cursor()
+{
+	tty_get_cursor(&save_row, &save_col);
+}
+
+static inline void tty_restore_cursor()
+{
+	tty_set_cursor(save_row, save_col);
 }
 
 static void tty_set_sane()
@@ -192,12 +202,21 @@ static char *read_line_raw()
 
 		c &= 0xff;
 
-#if 1
+#ifdef PRINT_RAW
+		fprintf(stderr, "0x%02x\r\n", c); fflush(stderr);
+		if (c == 0x03) {
+			tty_set_sane();
+			exit(0);
+		}
+		continue;
+#endif
+
 		if (parse_csi(&csi_state, c, buf, &cursor))
 			continue;
-#endif
+
 		switch (c)  {
-		case 0x0d: // Return key
+		case 0x0a: // Ctrl-J ('\n')
+		case 0x0d: // Return key ('\r')
 			tty_send_newline();
 			return buf;
 		case 0x03: // Ctrl-C
@@ -251,18 +270,21 @@ static char *read_line_raw()
 			tty_move_cursor_backward(1);
 			redraw_line(buf);
 			continue;
-		}
-
-		if (c == '\t') {
+		case 0x0c: // ctrl-L
+			tty_clear_screen();
+			tty_set_cursor(0, 0);
+			tty_send_string(prompt);
+			tty_send_string(buf);
+			continue;
+		case 0x09: // tab '\t'
 			if (tab_count < 2)
 				tab_count++;
 			// TODO: Implement tab completion.
-			continue;
-		} else {
+		default:
 			tab_count = 0;
 		}
 
-		if (c < 0x20 && c > 0x7E) {
+		if (c < 0x20 || c > 0x7E) {
 			// Un-handled, non-printable characters.
 			continue;
 		}
@@ -315,7 +337,7 @@ void read_line_reset()
 	tty_set_sane();
 }
 
-char *read_line(const char *prompt)
+char *read_line(const char *prompt_str)
 {
 	char *line;
 
@@ -324,11 +346,32 @@ char *read_line(const char *prompt)
 		return NULL;
 	}
 
+	prompt = strdup(prompt_str);
 	tty_send_string(prompt);
 
 	line = read_line_raw();
 
+	free(prompt);
 	tty_set_sane();
-
 	return line;
 }
+
+
+#ifdef TESTING
+int main()
+{
+	char *line;
+	while (1) {
+		if ((line = read_line("prompt> ")) == NULL)
+			continue;
+
+		if (strcmp(line, "exit") == 0)
+			exit(0);
+
+		fprintf(stderr, "Read: '%s'\n", line); fflush(stderr);
+
+		free(line);
+	}
+	return 0;
+}
+#endif
