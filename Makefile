@@ -24,6 +24,8 @@
 #   Date   : Thu Oct 19 06:02:01 IST 2017
 # 
 
+CC      = $(CROSS_COMPILE)gcc
+AR      = $(CROSS_COMPILE)ar
 
 CFLAGS  = -Wall -Iinclude
 LDFLAGS = -pthread -Llib -llimpid
