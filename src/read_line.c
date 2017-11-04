@@ -183,7 +183,7 @@ static int parse_csi(int *state, int c, char *buf, int *cursor)
 
 static char *read_line_raw()
 {
-	int i, c, tmp;
+	int i, c, tmp, tmp1, tmp2;
 	int csi_state = 0, tab_count = 0, cursor = 0;
 
 	// Get starting offset to know boundaries
@@ -253,8 +253,8 @@ static char *read_line_raw()
 			tmp = cursor - 1;
 			while (tmp >= 0 && buf[tmp] == ' ') tmp--;
 			while (tmp >= 0 && buf[tmp] != ' ') tmp--;
-			tmp++;
-			buf[tmp] = 0;
+			tmp1 = ++tmp; tmp2 = cursor;
+			do { buf[tmp1++] = buf[tmp2]; } while (buf[tmp2++]);
 			tty_move_cursor_backward(cursor-tmp);
 			cursor = tmp;
 			redraw_line(buf);
