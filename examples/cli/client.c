@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include <limpid.h>
 
 int main(int argc, char *argv[])
@@ -44,6 +45,11 @@ int main(int argc, char *argv[])
 
 		if (strcmp(line, "exit") == 0) {
 			exit(0);
+		}
+
+		if (strcmp(line, "devshell") == 0) {
+			system("/bin/bash");
+			continue;
 		}
 
 		if (line && (strlen(line) == 0)) {

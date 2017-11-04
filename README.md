@@ -12,17 +12,17 @@ Limpid is library that allows data transfer to/from your embedded Linux applicat
 
 Have a look at `examples/cli/` directory for creating a console server and client and `examples/api` for creating a JSON AIP server.
 
-### Build & Cross Compiling
+### Build and Install
 
-Clone the repository and execute `make` from the top level of the repository. Link with -llimpid in your application.
+Limpid can be cross compiling by exporting your compiler prefix. If you want to compile with `arm-linux-gnueabihf-gcc`, you would have to `export CROSS_COMPILE=arm-linux-gnueabihf-`. Of course, the path to your compiler should be exported in your shell's `PATH` environment variable. You can skip this step if you are building host.
 
-Limpid can be cross compiling by exporting your compiler prefix. If you want to compile with `arm-linux-gnueabihf-gcc`, you would have to do like so, 
+Additionally, you could `export PREFIX=/custom/install_dir` if you are installing to a non standard install path. 
 
-``` shell
-export CROSS_COMPILE=arm-linux-gnueabihf-
+To build and install limpid,
+
+```shell
+make && make install
 ```
-
-Of course, the path to your compiler should be exported in your shell's `PATH` environment.
 
 ### Bugs
 
