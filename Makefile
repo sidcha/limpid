@@ -24,11 +24,16 @@
 #   Date   : Thu Oct 19 06:02:01 IST 2017
 # 
 
+MAJOR_NUMBER = 0
+MINOR_NUMBER = 1
+
+VERSION  := v$(MAJOR_NUMBER).$(MINOR_NUMBER)
 ROOT_DIR := $(shell pwd)
+
 CC       := $(CROSS_COMPILE)gcc
 AR       := $(CROSS_COMPILE)ar
 
-CFLAGS   = -Wall -Iinclude
+CFLAGS   = -Wall -Iinclude -DVERSION="$(VERSION)"
 LDFLAGS  = -pthread -Llib -llimpid
 PREFIX  ?= /usr
 
@@ -56,7 +61,7 @@ lib/liblimpid.a: src/limpid.o src/read_line.o src/string.o
 
 src/%.o: src/%.c
 	@echo "$(CC): building $<"
-	@$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
 
 .PHONY: all clean
 
