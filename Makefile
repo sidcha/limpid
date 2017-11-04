@@ -30,13 +30,11 @@ AR       := $(CROSS_COMPILE)ar
 
 CFLAGS   = -Wall -Iinclude
 LDFLAGS  = -pthread -Llib -llimpid
+PREFIX  ?= /usr
 
-all: dirs liblimpid example
+all: liblimpid example
 
 liblimpid: lib/liblimpid.a
-
-dirs:
-	@mkdir -p obj lib
 
 example:
 	@echo "Building examples..."
@@ -46,7 +44,13 @@ clean:
 	@make -C examples/cli clean
 	@rm -rf lib/* src/*.o
 
+install:
+	@mkdir -p $(PREFIX)/lib/ $(PREFIX)/include/
+	@cp -f lib/*.a $(PREFIX)/lib/
+	@cp -rf include/* $(PREFIX)/include/
+
 lib/liblimpid.a: src/limpid.o src/read_line.o src/string.o
+	@mkdir -p lib
 	@echo "$(AR): creating limpid library"
 	@$(AR) rcs -o $@ $^
 
@@ -54,5 +58,5 @@ src/%.o: src/%.c
 	@echo "$(CC): building $<"
 	@$(CC) $(CFLAGS) -c $< -o $@
 
-.PHONY: all limmpd sample_app clean
+.PHONY: all clean
 
