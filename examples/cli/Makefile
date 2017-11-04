@@ -21,38 +21,31 @@
 # 
 #   Author : Siddharth Chandrasekaran
 #   Email  : siddharth@embedjournal.com
-#   Date   : Thu Oct 19 06:02:01 IST 2017
+#   Date   : Sat Nov  4 09:52:24 IST 2017
 # 
 
-ROOT_DIR := $(shell pwd)
-CC       := $(CROSS_COMPILE)gcc
-AR       := $(CROSS_COMPILE)ar
+CC       ?= $(CROSS_COMPILE)gcc
+ROOT_DIR ?=../..
 
-CFLAGS   = -Wall -Iinclude
-LDFLAGS  = -pthread -Llib -llimpid
+CFLAGS  = -Wall -I$(ROOT_DIR)/include
+LDFLAGS = -pthread -L$(ROOT_DIR)/lib -llimpid
 
-all: dirs liblimpid example
+all: app prompt
 
-liblimpid: lib/liblimpid.a
+app: sample_app.o
+	@echo "$(CC): linking $@..."
+	@$(CC) -o $@ $^ $(LDFLAGS)
 
-dirs:
-	@mkdir -p obj lib
-
-example:
-	@echo "Building examples..."
-	@make -C examples/cli all
+prompt: client.o
+	@echo "$(CC): linking $@..."
+	@$(CC) -o $@ $^ $(LDFLAGS)
 
 clean:
-	@make -C examples/cli clean
-	@rm -rf lib/* src/*.o
+	@rm -rf *.o app prompt
 
-lib/liblimpid.a: src/limpid.o src/read_line.o src/string.o
-	@echo "$(AR): creating limpid library"
-	@$(AR) rcs -o $@ $^
-
-src/%.o: src/%.c
-	@echo "$(CC): building $<"
+%.o: %.c
+	@echo "$(CC): building $<..."
 	@$(CC) $(CFLAGS) -c $< -o $@
 
-.PHONY: all limmpd sample_app clean
+.PHONY: all app prompt clean
 

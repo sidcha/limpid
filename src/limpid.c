@@ -26,10 +26,12 @@
 
 ******************************************************************************/
 
-#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <string.h>
+#include <ctype.h>
+
 #include <unistd.h>
 #include <errno.h>
 #include <pthread.h>
@@ -50,6 +52,15 @@ struct limpid_cmd_s {
 
 struct limpid_cmd_s *limpid_cmd[LIMPID_MAX_COMMANDS];
 int limpid_num_cmds;
+
+void say(const char *fmt, ...)
+{
+	va_list arg;
+	fprintf(stderr, "Limpid: ");
+	va_start(arg, fmt);
+	vfprintf(stderr, fmt, arg);
+	va_end(arg);
+}
 
 static int set_args(char *args, char **argv)
 {
@@ -137,7 +148,7 @@ int limpid_create_command(const char* cmd_str, int (*handler)(int, char **, stri
 
 	cmd = malloc(sizeof(struct limpid_cmd_s));
 	if (cmd == NULL) {
-		fprintf(stderr, "limpid: failed to alloc memory for command");
+		say("failed to alloc memory for command\n");
 		return -1;
 	}
 
@@ -155,7 +166,7 @@ static void *limpid_listener(void *arg)
 	limpid_t *ctx = (limpid_t *) arg;
 
 	if ((ctx->fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-		fprintf(stderr, "Error: failed to created server fd\n");
+		say("failed to created server fd\n");
 		return NULL;
 	}
 
@@ -166,19 +177,19 @@ static void *limpid_listener(void *arg)
 	socklen_t len = sizeof(sock_serv.sun_family) + strlen(ctx->path);
 
 	if (bind(ctx->fd, (const struct sockaddr *)&sock_serv, len) < 0) {
-		fprintf(stderr, "limpid: failed at bind!\n");
+		say("failed at bind!\n");
 		return NULL;
 	}
 
 	if (listen(ctx->fd, 5) < 0) {
-		fprintf(stderr, "limpid: failed at listen!\n");
+		say("failed at listen!\n");
 		return NULL;
 	}
 
 	while (1) {
 		ctx->client_fd = accept(ctx->fd, (struct sockaddr *)&cli_addr, &len);
 		if (ctx->client_fd < 0) {
-			perror("limpid: failed at accept");
+			say("failed at accept\n");
 			continue;
 		}
 
@@ -271,7 +282,7 @@ int limpid_send(limpid_t *ctx, lchunk_t *c)
 	fd = (ctx->type == LIMPID_SERVER) ? ctx->client_fd : ctx->fd;
 
 	if ((ret = write(fd, c, len)) < 0) {
-		fprintf(stderr, "Error at write");
+		say("Error at write");
 	}
 
 	free(c);
@@ -299,12 +310,12 @@ int limpid_receive(limpid_t *ctx, lchunk_t **c)
 	void *read_data = malloc(read1);
 
 	if (read_data == NULL) {
-		fprintf(stderr, "Alloc error!\n");
+		say("Alloc error!\n");
 		return -1;
 	}
 
 	if ((read(fd, read_data, read1)) < 0) {
-		fprintf(stderr, "Error at read\n");
+		say("Error at read\n");
 		return -1;
 	}
 

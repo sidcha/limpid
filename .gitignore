@@ -1,6 +1,8 @@
-obj/
-loc/
-lib/
+*.o
+*.a
 
-sample_app
-limpid
+loc/
+
+examples/cli/app
+examples/cli/prompt
+

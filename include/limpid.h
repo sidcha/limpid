@@ -30,6 +30,7 @@
 #define _LIMPID_H
 
 // Configs
+#define LIMPID_SERVER_PATH         "/tmp/limpid-server"
 #define LIMPID_MAX_COMMANDS        128
 #define LIMPID_READ_LINE_MAXLEN    128
 
