@@ -264,7 +264,7 @@ lchunk_t *limpid_make_chunk(int type, char *buf, int len)
 
 	c->type = type;
 	c->str.len = len;
-	c->str.maxLen = len;
+	c->str.max_len = len;
 	memcpy(c->str.arr, buf, len);
 
 	return c;

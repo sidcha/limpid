@@ -36,12 +36,11 @@
 
 typedef struct {
 	int len;
-	int maxLen;
-	char arr[0];
+	int max_len;
+	char *arr;
 } string_t;
 
-#define newString(x,y) {0}; char x##arr[y]; x.arr=x##cArr; x.len=0; x.maxLen=y; x.reserved=0;
-#define createString(x,y) char x##arr[y]; string_t x={.arr=x##arr, .len=0, .maxLen=y, .reserved=0 }
+#define create_string(x,y) char x##arr[y]; string_t x={.arr=x##arr, .len=0, .max_len=y, }
 
 string_t *new_string(int len);
 int string_printf(string_t *str, char *mode, const char *fmt, ...);

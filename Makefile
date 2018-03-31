@@ -54,7 +54,7 @@ install:
 	@cp -f lib/*.a $(PREFIX)/lib/
 	@cp -rf include/* $(PREFIX)/include/
 
-lib/liblimpid.a: src/limpid.o src/read_line.o src/string.o
+lib/liblimpid.a: src/limpid.o src/read_line.o src/string.o src/json.o
 	@mkdir -p lib
 	@echo "$(AR): creating limpid library"
 	@$(AR) rcs -o $@ $^

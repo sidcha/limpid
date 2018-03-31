@@ -38,7 +38,7 @@ string_t *new_string(int len)
 	if (s == NULL)
 		return s;
 
-	s->maxLen = len;
+	s->max_len = len;
 	s->len = 0;
 	return s;
 }
@@ -49,10 +49,10 @@ int string_printf(string_t *str, char *mode, const char *fmt, ...)
 	va_list (args);
 	va_start(args, fmt);
 	int st = (mode[0] != 'a') ? 0 : str->len;
-	ret = vsnprintf(str->arr + st, str->maxLen - st, fmt, args);
+	ret = vsnprintf(str->arr + st, str->max_len - st, fmt, args);
 	va_end(args);
-	if ((str->len + ret) >= str->maxLen) {
-		str->len = str-> maxLen;
+	if ((str->len + ret) >= str->max_len) {
+		str->len = str-> max_len;
 	} else {
 		str->len += ret;
 		str->arr[str->len] = 0;
@@ -62,13 +62,13 @@ int string_printf(string_t *str, char *mode, const char *fmt, ...)
 
 int string_append(string_t *str, char *mode, char *buf, int len)
 {
-	if ( str->len >= str->maxLen || str->len < 0)
+	if ( str->len >= str->max_len || str->len < 0)
 		return -1;
 
 	if (mode[0] == 'f')
-		len = str->maxLen - str->len;
+		len = str->max_len - str->len;
 
-	if ((str->len + len) > str->maxLen)
+	if ((str->len + len) > str->max_len)
 		return -1;
 
 	int i, ovf=0;
@@ -76,7 +76,7 @@ int string_append(string_t *str, char *mode, char *buf, int len)
 		if (ovf) break;
 		str->arr[str->len] = buf[i];
 		str->len++;
-		if(str->len >= str->maxLen)
+		if(str->len >= str->max_len)
 			ovf = 1;
 	}
 
