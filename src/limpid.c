@@ -112,7 +112,7 @@ static int limpid_process_cmd(limpid_t *ctx, string_t *cmd)
 
 	strncpy(cmd_buf, cmd->arr, cmd->len);
 	cmd_buf[cmd->len] = 0;
-	av = parse_args(cmd->arr, &ac);
+	av = parse_args(cmd_buf, &ac);
 	if (ac < 1) {
 		fprintf(stderr, "limpid: error parsing command line\n");
 		return -1;
