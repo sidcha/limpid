@@ -24,10 +24,7 @@
 #   Date   : Sat Nov  4 09:52:24 IST 2017
 # 
 
-CC       ?= $(CROSS_COMPILE)gcc
-ROOT_DIR ?=../..
-
-CFLAGS  = -Wall -I$(ROOT_DIR)/include
+CFLAGS  = -Wall -I$(ROOT_DIR)/include -g3 -O
 LDFLAGS = -pthread -L$(ROOT_DIR)/lib -llimpid
 
 all: app prompt

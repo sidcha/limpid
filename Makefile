@@ -33,9 +33,13 @@ ROOT_DIR := $(shell pwd)
 CC       := $(CROSS_COMPILE)gcc
 AR       := $(CROSS_COMPILE)ar
 
-CFLAGS   = -Wall -Iinclude -DVERSION="$(VERSION)"
+CFLAGS   = -Wall -Iinclude -DVERSION="$(VERSION)" -g3 -O
 LDFLAGS  = -pthread -Llib -llimpid
 PREFIX  ?= /usr
+
+export
+
+OBJ      = obj/limpid-core.o obj/read-line.o obj/string.o obj/limpid-cli.o
 
 all: liblimpid example
 
@@ -43,25 +47,26 @@ liblimpid: lib/liblimpid.a
 
 example:
 	@echo "Building examples..."
-	@make -C examples/cli all
+	@make -s -C examples/cli all
 
 clean:
-	@make -C examples/cli clean
-	@rm -rf lib/* src/*.o
+	@make -s -C examples/cli clean
+	@rm -rf lib/* obj/
 
 install:
 	@mkdir -p $(PREFIX)/lib/ $(PREFIX)/include/
 	@cp -f lib/*.a $(PREFIX)/lib/
 	@cp -rf include/* $(PREFIX)/include/
 
-lib/liblimpid.a: src/limpid.o src/read_line.o src/string.o src/json.o
+lib/liblimpid.a: $(OBJ)
 	@mkdir -p lib
 	@echo "$(AR): creating limpid library"
 	@$(AR) rcs -o $@ $^
 
-src/%.o: src/%.c
+obj/%.o: src/%.c
+	@test -d $@ || mkdir -p $(dir $@)
 	@echo "$(CC): building $<"
-	$(CC) $(CFLAGS) -c $< -o $@
+	@$(CC) $(CFLAGS) -c $< -o $@
 
 .PHONY: all clean
 

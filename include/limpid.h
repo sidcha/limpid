@@ -29,18 +29,29 @@
 #ifndef _LIMPID_H
 #define _LIMPID_H
 
+#include <stdint.h>
+
 // Configs
 #define LIMPID_SERVER_PATH         "/tmp/limpid-server"
 #define LIMPID_MAX_COMMANDS        128
 #define LIMPID_READ_LINE_MAXLEN    128
+#define LIMPID_TRIGGER_MAXLEN      64
 
 typedef struct {
 	int len;
 	int max_len;
-	char *arr;
+	char arr[0];
 } string_t;
 
-#define create_string(x,y) char x##arr[y]; string_t x={.arr=x##arr, .len=0, .max_len=y, }
+#define create_string(x,y) 	char x##arr[y]; string_t x={.arr=x##arr, .len=0, .max_len=y, }
+#define LIMPID_REG_CLI(x,y)	\
+({				\
+	lhandle_t h;		\
+	h.type=LHANDLE_CLI;	\
+	h.trigger=x;		\
+	h.cli_handle=y;	\
+	limpid_register(&h);	\
+})
 
 string_t *new_string(int len);
 int string_printf(string_t *str, char *mode, const char *fmt, ...);
@@ -48,11 +59,25 @@ int string_append(string_t *str, char *mode, char *buf, int len);
 
 char *read_line(const char *prompt);
 
-enum {
+enum lchunk_type_e {
 	TYPE_COMMAND,
 	TYPE_RESPONSE,
 	TYPE_COMPLETION,
 };
+
+typedef enum {
+	LHANDLE_CLI,
+	LHANDLE_JSON,
+	LHANDLE_SENTINEL
+} lhandle_type_t;
+
+typedef struct {
+	lhandle_type_t type;
+	const char *trigger;
+	union {
+		int (*cli_handle)(int, char **, string_t **);
+	};
+} lhandle_t;
 
 typedef struct {
 	int type;       // see below
@@ -67,15 +92,21 @@ typedef struct {
 
 typedef struct {
 	int type;
-	string_t str;
+	char trigger[LIMPID_TRIGGER_MAXLEN];
+	int length;
+	uint8_t data[0];
 } lchunk_t;
 
 limpid_t *limpid_server_init(const char *path);
 limpid_t *limpid_connnect(const char *path);
 void limpid_disconnect(limpid_t *ctx);
-lchunk_t *limpid_make_chunk(int type, char *buf, int len);
+lchunk_t *limpid_make_chunk(int type, const char *trigger, void *data, int len);
 int limpid_send(limpid_t *ctx, lchunk_t *c);
 int limpid_receive(limpid_t *ctx, lchunk_t **c);
-int limpid_create_command(const char* cmd_str, int (*handler)(int, char **, string_t **));
+
+void limpid_register(lhandle_t *h);
+
+int limpid_read_cli_cmd(const char *prompt, char **trigger, char **args);
+int limpid_send_cli_cmd(char *trigger, char*args, char **resp);
 
 #endif

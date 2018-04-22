@@ -29,8 +29,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <string.h>
-#include <ctype.h>
+#include <assert.h>
 
 #include <unistd.h>
 #include <errno.h>
@@ -45,13 +46,16 @@
 #define is_char(x) (((x) >= 'A' && (x) <= 'Z') || ((x) >= 'a' && (x) <='z'))
 #define to_lower(x) do { if (is_char(x)) { x |= 0x20 } } while(0)
 
-struct limpid_cmd_s {
-	char *cmd_str;
-	int (*cmd_handler)(int argc, char *argv[], string_t **s);
-};
+typedef int (*processor_t)(lchunk_t *, lchunk_t **);
 
-struct limpid_cmd_s *limpid_cmd[LIMPID_MAX_COMMANDS];
-int limpid_num_cmds;
+// CLI Handler
+int limpid_register_cli_handle(const char *trigger, int (*handler)(int, char **, string_t **));
+int limpid_process_cli_cmd(lchunk_t *cmd, lchunk_t **resp);
+
+processor_t processor[5] = {
+	limpid_process_cli_cmd,
+	NULL,
+};
 
 void say(const char *fmt, ...)
 {
@@ -62,109 +66,13 @@ void say(const char *fmt, ...)
 	va_end(arg);
 }
 
-static int set_args(char *args, char **argv)
-{
-	int count = 0;
-
-	while (isspace(*args)) ++args;
-	while (*args) {
-		if (argv) argv[count] = args;
-		while (*args && !isspace(*args)) ++args;
-		if (argv && *args) *args++ = '\0';
-		while (isspace(*args)) ++args;
-		count++;
-	}
-	return count;
-}
-
-static char **parse_args(char *args, int *argc)
-{
-	char **argv = NULL;
-	int argn = 0;
-
-	if (args && *args && (args = strdup(args))
-			&& (argn = set_args(args,NULL))
-			&& (argv = malloc((argn+1) * sizeof(char *)))) {
-		*argv++ = args;
-		argn = set_args(args,argv);
-	}
-
-	if (args && !argv) free(args);
-
-	*argc = argn;
-	return argv;
-}
-
-static void free_parsed_args(char **argv)
-{
-	if (argv) {
-		free(argv[-1]);
-		free(argv-1);
-	}
-}
-
-static int limpid_process_cmd(limpid_t *ctx, string_t *cmd)
-{
-	string_t *resp=NULL;
-	lchunk_t *c;
-	char *p=NULL, **av, cmd_buf[256];
-	int i, ac, len=0;
-
-	strncpy(cmd_buf, cmd->arr, cmd->len);
-	cmd_buf[cmd->len] = 0;
-	av = parse_args(cmd_buf, &ac);
-	if (ac < 1) {
-		fprintf(stderr, "limpid: error parsing command line\n");
-		return -1;
-	}
-
-	for (i=0; i<limpid_num_cmds; i++) {
-		if (strcmp(av[0], limpid_cmd[i]->cmd_str) == 0) {
-			limpid_cmd[i]->cmd_handler(ac-1, &av[1], &resp);
-			break;
-		}
-	}
-
-	if (resp) {
-		p = resp->arr;
-		len = resp->len;
-	}
-
-	c = limpid_make_chunk(TYPE_RESPONSE, p, len);
-	limpid_send(ctx, c);
-
-	if (resp) free(resp);
-	free_parsed_args(av);
-	return 0;
-}
-
-int limpid_create_command(const char* cmd_str, int (*handler)(int, char **, string_t **))
-{
-	int id;
-	struct limpid_cmd_s *cmd;
-
-	if(limpid_num_cmds >= LIMPID_MAX_COMMANDS)
-		return -1;
-
-	cmd = malloc(sizeof(struct limpid_cmd_s));
-	if (cmd == NULL) {
-		say("failed to alloc memory for command\n");
-		return -1;
-	}
-
-	id = limpid_num_cmds++;
-	cmd->cmd_str = strdup(cmd_str);
-	cmd->cmd_handler = handler;
-	limpid_cmd[id] = cmd;
-	return 0;
-}
-
 static void *limpid_listener(void *arg)
 {
 	struct sockaddr_un sock_serv, cli_addr;
 
-	limpid_t *ctx = (limpid_t *) arg;
+	assert(arg);
 
+	limpid_t *ctx = (limpid_t *) arg;
 	if ((ctx->fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
 		say("failed to created server fd\n");
 		return NULL;
@@ -173,33 +81,35 @@ static void *limpid_listener(void *arg)
 	sock_serv.sun_family = AF_UNIX;
 	strcpy(sock_serv.sun_path, ctx->path);
 	unlink(ctx->path);
-
 	socklen_t len = sizeof(sock_serv.sun_family) + strlen(ctx->path);
 
 	if (bind(ctx->fd, (const struct sockaddr *)&sock_serv, len) < 0) {
 		say("failed at bind!\n");
 		return NULL;
 	}
-
 	if (listen(ctx->fd, 5) < 0) {
 		say("failed at listen!\n");
 		return NULL;
 	}
-
 	while (1) {
 		ctx->client_fd = accept(ctx->fd, (struct sockaddr *)&cli_addr, &len);
 		if (ctx->client_fd < 0) {
 			say("failed at accept\n");
 			continue;
 		}
-
-		lchunk_t *c;
-		if (limpid_receive(ctx, &c) == 0) {
-			limpid_process_cmd(ctx, &c->str);
-			free(c);
+		printf("limpid: accepted connection from a clinet\n");
+		lchunk_t *cmd=NULL, *resp=NULL;
+		lchunk_t *err = limpid_make_chunk(TYPE_RESPONSE, NULL, NULL, 0);
+		if (limpid_receive(ctx, &cmd) == 0) {
+			if (cmd->type >= LHANDLE_CLI && cmd->type <= LHANDLE_SENTINEL)
+				processor[cmd->type](cmd, &resp);
+			free(cmd);
 		}
-
+		limpid_send(ctx, resp ? resp : err);
+		if (resp) free(resp);
+		free(err);
 		close(ctx->client_fd);
+		printf("limpid: closed connection to client\n");
 	}
 	return NULL;
 }
@@ -207,8 +117,7 @@ static void *limpid_listener(void *arg)
 limpid_t *limpid_server_init(const char *path)
 {
 	limpid_t *ctx = malloc(sizeof(limpid_t));
-	if (ctx == NULL)
-		return NULL;
+	assert(ctx);
 
 	ctx->type = LIMPID_SERVER;
 	ctx->path = strdup(path);
@@ -217,14 +126,17 @@ limpid_t *limpid_server_init(const char *path)
 	return ctx;
 }
 
+// Client side
+
 limpid_t *limpid_connnect(const char *path)
 {
 	socklen_t sock_len;
 	struct sockaddr_un serv_addr;
 
 	limpid_t *ctx = malloc(sizeof(limpid_t));
-	if (ctx == NULL)
-		return NULL;
+
+	assert(ctx);
+	assert(path);
 
 	ctx->type = LIMPID_CLIENT;
 	ctx->path = NULL;
@@ -239,12 +151,63 @@ limpid_t *limpid_connnect(const char *path)
 
 	sock_len = sizeof(serv_addr.sun_family) + strlen(serv_addr.sun_path);
 	if (connect(ctx->fd, (const struct sockaddr *)&serv_addr, sock_len) != 0) {
+		fprintf(stderr, "limpid: failed to connect to server\n");
 		close(ctx->fd);
 		free(ctx);
-		return NULL;
+		exit(EXIT_FAILURE);
 	}
 	ctx->path = strdup(path);
 	return ctx;
+}
+
+int limpid_send(limpid_t *ctx, lchunk_t *c)
+{
+	int ret = 0, fd, len;
+
+	assert(ctx);
+	assert(c);
+
+	len = sizeof(lchunk_t) + c->length;
+	fd = (ctx->type == LIMPID_SERVER) ? ctx->client_fd : ctx->fd;
+	if ((ret = write(fd, c, len)) < 0) {
+		say("Error at write");
+	}
+
+	return ret;
+}
+
+int limpid_receive(limpid_t *ctx, lchunk_t **c)
+{
+	int fd;
+	volatile int read1, read2=-1;
+
+	assert(ctx);
+
+	fd = (ctx->type == LIMPID_SERVER) ? ctx->client_fd : ctx->fd;
+	do {
+		// Prevent partial reads by waiting for data
+		// to stabilize.
+		ioctl(fd, FIONREAD, &read1);
+		if (read1 > 0) {
+			usleep(100);
+			ioctl(fd, FIONREAD, &read2);
+		} else {
+			usleep(10);
+		}
+	} while (read1 != read2);
+
+	void *read_data = malloc(read1);
+	if (read_data == NULL) {
+		say("Alloc error!\n");
+		return -1;
+	}
+
+	if ((read(fd, read_data, read1)) < 0) {
+		say("Error at read\n");
+		return -1;
+	}
+	*c = (lchunk_t *) read_data;
+	return 0;
 }
 
 void limpid_disconnect(limpid_t *ctx)
@@ -255,71 +218,30 @@ void limpid_disconnect(limpid_t *ctx)
 	free(ctx);
 }
 
-lchunk_t *limpid_make_chunk(int type, char *buf, int len)
+lchunk_t *limpid_make_chunk(int type, const char *trigger, void *data, int len)
 {
-	lchunk_t *c = malloc(sizeof(lchunk_t)+len);
+	int i;
 
-	if (c == NULL)
-		return NULL;
+	lchunk_t *c = calloc(1, sizeof(lchunk_t)+len);
+	assert (c != NULL);
 
 	c->type = type;
-	c->str.len = len;
-	c->str.max_len = len;
-	memcpy(c->str.arr, buf, len);
-
+	if (trigger)
+		strncpy(c->trigger, trigger, LIMPID_TRIGGER_MAXLEN-1);
+	c->length = len;
+	for (i=0; i<len; i++) {
+		c->data[i] = *((uint8_t *)data + i);
+	}
 	return c;
 }
 
-int limpid_send(limpid_t *ctx, lchunk_t *c)
+void limpid_register(lhandle_t *h)
 {
-	int ret = 0, fd, len;
-
-	if (ctx == NULL || c == NULL)
-		return -1;
-
-	len = sizeof(lchunk_t) + c->str.len;
-
-	fd = (ctx->type == LIMPID_SERVER) ? ctx->client_fd : ctx->fd;
-
-	if ((ret = write(fd, c, len)) < 0) {
-		say("Error at write");
+	switch (h->type) {
+	case LHANDLE_CLI:
+		limpid_register_cli_handle(h->trigger, h->cli_handle);
+		break;
+	default:
+		break;
 	}
-
-	free(c);
-	return ret;
 }
-
-int limpid_receive(limpid_t *ctx, lchunk_t **c)
-{
-	int fd;
-	volatile int read1, read2=-1;
-
-	fd = (ctx->type == LIMPID_SERVER) ? ctx->client_fd : ctx->fd;
-
-	do {
-		// Prevent partial reads by waiting for data
-		// to stabilize.
-		ioctl(fd, FIONREAD, &read1);
-		if (read1 > 0) {
-			usleep(100);
-			ioctl(fd, FIONREAD, &read2);
-		}
-		usleep(10);
-	} while (read1 != read2);
-
-	void *read_data = malloc(read1);
-
-	if (read_data == NULL) {
-		say("Alloc error!\n");
-		return -1;
-	}
-
-	if ((read(fd, read_data, read1)) < 0) {
-		say("Error at read\n");
-		return -1;
-	}
-
-	*c = (lchunk_t *) read_data;
-	return 0;
-}
-

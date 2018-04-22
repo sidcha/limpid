@@ -31,16 +31,17 @@
 #include <string.h>
 #include <unistd.h>
 #include <termios.h>
+#include <assert.h>
 
 #include <limpid.h>
 
-#define tty_erase_line() write(1, "\033[K", 3)
-#define tty_send_newline() write(1, "\r\n", 2)
-#define tty_send_string(x) write(1, x, strlen(x))
-#define tty_flush() fflush(stdout)
-#define tty_qeury_cursor() write(1, "\033[6n", 4)
-#define tty_put_char(c) write(1, c, 1)
-#define tty_clear_screen() write(1, "\033[2J", 4)
+#define tty_erase_line() 	assert(write(1, "\033[K", 3) == 3)
+#define tty_send_newline() 	assert(write(1, "\r\n", 2) == 2)
+#define tty_qeury_cursor()	assert(write(1, "\033[6n", 4) == 4)
+#define tty_put_char(c) 	assert(write(1, c, 1) == 1)
+#define tty_clear_screen()	assert(write(1, "\033[2J", 4) == 4)
+#define tty_send_string(s)	assert(write(1, s, strlen(s)) == strlen(s))
+#define tty_flush()		fflush(stdout)
 #define tty_move_cursor_forward(x) \
 	do{fprintf(stdout, "\033[%dC", x);fflush(stdout);}while(0)
 #define tty_move_cursor_backward(x) \
@@ -54,13 +55,13 @@ struct termios temios_backup;
 
 static int tty_get_cursor(int *row, int *col)
 {
-	int retval=-1;
+	int n, retval=-1;
 	char *p, buf[8];
 
 	do {
 		tty_qeury_cursor();
-		read (0 ,buf ,sizeof(buf));
-		if (buf[0] != '\033' || buf[1] != '[')
+		n = read (0 ,buf ,sizeof(buf));
+		if (n <= 0 || buf[0] != '\033' || buf[1] != '[')
 			break;
 		p = buf + 2;
 		*row = atoi(p);
@@ -189,7 +190,7 @@ static char *read_line_raw()
 	// Get starting offset to know boundaries
 	if (tty_get_cursor(&start_row, &start_col)) {
 		fprintf(stderr, "Error: unable to grab current position\n");
-		return NULL;
+		exit(EXIT_FAILURE); // irrecoverable
 	}
 
 	char *buf = calloc(LIMPID_READ_LINE_MAXLEN, sizeof(char));
@@ -206,7 +207,7 @@ static char *read_line_raw()
 		fprintf(stderr, "0x%02x\r\n", c); fflush(stderr);
 		if (c == 0x03) {
 			tty_set_sane();
-			exit(0);
+			exit(EXIT_SUCCESS);
 		}
 		continue;
 #endif
@@ -215,19 +216,23 @@ static char *read_line_raw()
 			continue;
 
 		switch (c)  {
-		case 0x0a: // Ctrl-J ('\n')
-		case 0x0d: // Return key ('\r')
-			tty_send_newline();
-			return buf;
+		case 0x01: // Ctrl-A
+			while (cursor) {
+				tty_move_cursor_backward(1);
+				cursor--;
+			}
+			continue;
 		case 0x03: // Ctrl-C
 			tty_send_string("^C");
 			tty_send_newline();
 			free(buf);
 			return NULL;
-		case 0x01: // Ctrl-A
-			while (cursor) {
-				tty_move_cursor_backward(1);
-				cursor--;
+		case 0x04: // Ctrl-D
+			if (!cursor) {
+				tty_send_newline();
+				tty_set_sane();
+				free(buf);
+				exit(EXIT_SUCCESS);
 			}
 			continue;
 		case 0x05: // Ctrl-E
@@ -237,6 +242,21 @@ static char *read_line_raw()
 			}
 			continue;
 		case 0x08: // Backspace
+			continue;
+		case 0x09: // tab '\t'
+			if (tab_count < 2)
+				tab_count++;
+			// TODO: Implement tab completion.
+			continue;
+		case 0x0a: // Ctrl-J ('\n')
+		case 0x0d: // Return key ('\r')
+			tty_send_newline();
+			return buf;
+		case 0x0c: // ctrl-L
+			tty_clear_screen();
+			tty_set_cursor(0, 0);
+			tty_send_string(prompt);
+			tty_send_string(buf);
 			continue;
 		case 0x15: // Ctrl-U
 			tmp=0;
@@ -270,16 +290,6 @@ static char *read_line_raw()
 			tty_move_cursor_backward(1);
 			redraw_line(buf);
 			continue;
-		case 0x0c: // ctrl-L
-			tty_clear_screen();
-			tty_set_cursor(0, 0);
-			tty_send_string(prompt);
-			tty_send_string(buf);
-			continue;
-		case 0x09: // tab '\t'
-			if (tab_count < 2)
-				tab_count++;
-			// TODO: Implement tab completion.
 		default:
 			tab_count = 0;
 		}
@@ -339,12 +349,28 @@ void read_line_reset()
 
 char *read_line(const char *prompt_str)
 {
-	char *line;
+	int len;
+	char *line, *s;
 
-	if (tty_set_raw()) {
-		fprintf(stderr, "Error: Can't go to raw mode.\n");
-		return NULL;
-	}
+	//if (tty_set_raw()) {
+		fprintf(stderr, "limpid: can't set tty raw. Reading in limited mode\n");
+		line = malloc(sizeof(char) * 128);
+		assert(line);
+		fputs(prompt_str, stdin);
+		s = fgets(line, 128, stdin);
+		if (s == NULL) {
+			fprintf(stderr, "limpid: fgets failed\n");
+			exit(EXIT_FAILURE); // irrecoverable
+		}
+		len = strlen(line);
+		if (line[len-1] == '\r' || line[len-1] == '\n')
+			line[len-1] = '\0';
+		if (line[len-2] == '\r' || line[len-2] == '\n')
+			line[len-2] = '\0';
+
+		printf("line '%s'\n", line);
+		return line;
+	//}
 
 	prompt = strdup(prompt_str);
 	tty_send_string(prompt);

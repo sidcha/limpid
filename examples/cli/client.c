@@ -34,62 +34,22 @@
 
 int main(int argc, char *argv[])
 {
-	char *line, resp[1024];
-
+	int ret;
+	char *trigger, *args, *resp;
 
 	while (1) {
+		ret = limpid_read_cli_cmd("[limpid]$ ", &trigger, &args);
+		if (ret == 0) continue;
+		if (ret == 1 || ret == -1) break;
 
-		if ((line = read_line("[limpid] $ ")) == NULL) {
-			continue;
-		}
-
-		if (strcmp(line, "exit") == 0) {
-			exit(0);
-		}
-
-		if (strcmp(line, "devshell") == 0) {
-			system("/bin/bash");
-			continue;
-		}
-
-		if (line && (strlen(line) == 0)) {
-			free(line);
-			continue;
-		}
-
-		limpid_t *ctx = limpid_connnect("/tmp/limpid-server");
-
-		if (ctx == NULL)  {
-			fprintf(stderr, "Failed to connect to limpid server!\n");
-			exit(-1);
-		}
-
-		lchunk_t *c = limpid_make_chunk(TYPE_COMMAND, line, strlen(line));
-
-		if (limpid_send(ctx, c) < 0) {
-			fprintf(stderr, "Failed to send command to server.\n");
-			exit(-1);
-		}
-
-		if (limpid_receive(ctx, &c)) {
-			fprintf(stderr, "Failed to receive response.\n");
-			exit(-1);
-		}
-
-		if (c->str.len != 0) {
-			strncpy(resp, c->str.arr, c->str.len);
-			resp[c->str.len] = 0;
+		if (limpid_send_cli_cmd(trigger, args, &resp) == 0) {
 			printf("%s\n", resp);
-		} else {
-			fprintf(stderr, "limpid: '%s' unknown command\n", line);
 		}
 
-		free(c);
-		free(line);
-		line = NULL;
-
-		limpid_disconnect(ctx);
+		free(trigger);
+		if (args) free(args);
 	}
 
-
+	return ret;
 }
+
