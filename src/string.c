@@ -30,7 +30,8 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
-#include <limpid.h>
+#include <limpid/common.h>
+#include <limpid/config.h>
 
 string_t *new_string(int len)
 {

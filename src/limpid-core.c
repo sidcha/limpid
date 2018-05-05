@@ -41,7 +41,7 @@
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 
-#include <limpid.h>
+#include <limpid/core.h>
 
 #define is_char(x) (((x) >= 'A' && (x) <= 'Z') || ((x) >= 'a' && (x) <='z'))
 #define to_lower(x) do { if (is_char(x)) { x |= 0x20 } } while(0)
@@ -114,7 +114,7 @@ static void *limpid_listener(void *arg)
 	return NULL;
 }
 
-limpid_t *limpid_server_init(const char *path)
+int limpid_server_init(const char *path)
 {
 	limpid_t *ctx = malloc(sizeof(limpid_t));
 	assert(ctx);
@@ -123,7 +123,7 @@ limpid_t *limpid_server_init(const char *path)
 	ctx->path = strdup(path);
 	pthread_t server_thread;
 	pthread_create(&server_thread, NULL, limpid_listener, (void *)ctx);
-	return ctx;
+	return 0;
 }
 
 // Client side

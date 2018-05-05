@@ -22,38 +22,48 @@
 
     Author : Siddharth Chandrasekaran
     Email  : siddharth@embedjournal.com
-    Date   : Sat Nov  4 21:31:56 IST 2017
+    Date   : Thu Oct 19 06:02:01 IST 2017
 
 ******************************************************************************/
 
-#include <unistd.h>
+#ifndef _LIMPID_H
+#define _LIMPID_H
 
-#include <limpid/cli.h>
+#include <stdint.h>
 
-int cmd_ping(int argc, char *argv[], string_t **resp)
-{
-	int i;
-	string_t *s = new_string(128);
+#include <limpid/common.h>
+#include <limpid/config.h>
 
-	string_printf(s, "a", "pong");
+enum lchunk_type_e {
+	TYPE_COMMAND,
+	TYPE_RESPONSE,
+	TYPE_COMPLETION,
+};
 
-	for (i=0; i<argc; i++) {
-		string_printf(s, "a", "\n[%d] %s", i, argv[i]);
-	}
+typedef struct {
+	int type;       // see below
+	int fd;         // client or server fd
+	int client_fd;  // write-to-fd for server
+	char *path;     // path to socket.
+} limpid_t;
 
-	*resp = s;
-	return 0;
-}
+// limpid_t::type
+#define LIMPID_SERVER  0
+#define LIMPID_CLIENT  1
 
-int main(int argc, char *argv[])
-{
-	limpid_server_init("/tmp/limpid-server");
+typedef struct {
+	int type;
+	char trigger[LIMPID_TRIGGER_MAXLEN];
+	int length;
+	uint8_t data[0];
+} lchunk_t;
 
-	LIMPID_REG_CLI("ping", cmd_ping);
+limpid_t *limpid_connnect(const char *path);
+void limpid_disconnect(limpid_t *ctx);
 
-	while (1) {
-		// Your application code!
-	}
-	return 0;
-}
+lchunk_t *limpid_make_chunk(int type, const char *trigger, void *data, int len);
 
+int limpid_send(limpid_t *ctx, lchunk_t *c);
+int limpid_receive(limpid_t *ctx, lchunk_t **c);
+
+#endif

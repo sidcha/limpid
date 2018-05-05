@@ -33,7 +33,7 @@
 #include <termios.h>
 #include <assert.h>
 
-#include <limpid.h>
+#include <limpid/config.h>
 
 #define tty_erase_line() 	assert(write(1, "\033[K", 3) == 3)
 #define tty_send_newline() 	assert(write(1, "\r\n", 2) == 2)
@@ -352,11 +352,12 @@ char *read_line(const char *prompt_str)
 	int len;
 	char *line, *s;
 
-	//if (tty_set_raw()) {
+	if (tty_set_raw())
+	{
 		fprintf(stderr, "limpid: can't set tty raw. Reading in limited mode\n");
 		line = malloc(sizeof(char) * 128);
 		assert(line);
-		fputs(prompt_str, stdin);
+		printf("%s", prompt_str);
 		s = fgets(line, 128, stdin);
 		if (s == NULL) {
 			fprintf(stderr, "limpid: fgets failed\n");
@@ -368,9 +369,8 @@ char *read_line(const char *prompt_str)
 		if (line[len-2] == '\r' || line[len-2] == '\n')
 			line[len-2] = '\0';
 
-		printf("line '%s'\n", line);
 		return line;
-	//}
+	}
 
 	prompt = strdup(prompt_str);
 	tty_send_string(prompt);

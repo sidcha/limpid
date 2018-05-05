@@ -22,38 +22,25 @@
 
     Author : Siddharth Chandrasekaran
     Email  : siddharth@embedjournal.com
-    Date   : Sat Nov  4 21:31:56 IST 2017
+    Date   : Sat May  5 11:36:56 IST 2018
 
 ******************************************************************************/
 
-#include <unistd.h>
+#ifndef _LIMPID_CLI_H
+#define _LIMPID_CLI_H
 
-#include <limpid/cli.h>
+#include <limpid/common.h>
 
-int cmd_ping(int argc, char *argv[], string_t **resp)
-{
-	int i;
-	string_t *s = new_string(128);
+#define LIMPID_REG_CLI(x,y)	\
+({				\
+	lhandle_t h;		\
+	h.type=LHANDLE_CLI;	\
+	h.trigger=x;		\
+	h.cli_handle=y;		\
+	limpid_register(&h);	\
+})
 
-	string_printf(s, "a", "pong");
+int limpid_read_cli_cmd(const char *prompt, char **trigger, char **args);
+int limpid_send_cli_cmd(char *trigger, char*args, char **resp);
 
-	for (i=0; i<argc; i++) {
-		string_printf(s, "a", "\n[%d] %s", i, argv[i]);
-	}
-
-	*resp = s;
-	return 0;
-}
-
-int main(int argc, char *argv[])
-{
-	limpid_server_init("/tmp/limpid-server");
-
-	LIMPID_REG_CLI("ping", cmd_ping);
-
-	while (1) {
-		// Your application code!
-	}
-	return 0;
-}
-
+#endif

@@ -31,7 +31,7 @@
 #include <ctype.h>
 #include <string.h>
 
-#include <limpid.h>
+#include <limpid/core.h>
 
 struct limpid_cmd_s {
 	char *trigger;

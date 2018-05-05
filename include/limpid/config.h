@@ -22,38 +22,16 @@
 
     Author : Siddharth Chandrasekaran
     Email  : siddharth@embedjournal.com
-    Date   : Sat Nov  4 21:31:56 IST 2017
+    Date   : Sat May  5 11:49:50 IST 2018
 
 ******************************************************************************/
 
-#include <unistd.h>
+#ifndef _LIMPID_CONFIG_H
+#define _LIMPID_CONFIG_H
 
-#include <limpid/cli.h>
+#define LIMPID_SERVER_PATH         "/tmp/limpid-server"
+#define LIMPID_MAX_COMMANDS        128
+#define LIMPID_READ_LINE_MAXLEN    128
+#define LIMPID_TRIGGER_MAXLEN      64
 
-int cmd_ping(int argc, char *argv[], string_t **resp)
-{
-	int i;
-	string_t *s = new_string(128);
-
-	string_printf(s, "a", "pong");
-
-	for (i=0; i<argc; i++) {
-		string_printf(s, "a", "\n[%d] %s", i, argv[i]);
-	}
-
-	*resp = s;
-	return 0;
-}
-
-int main(int argc, char *argv[])
-{
-	limpid_server_init("/tmp/limpid-server");
-
-	LIMPID_REG_CLI("ping", cmd_ping);
-
-	while (1) {
-		// Your application code!
-	}
-	return 0;
-}
-
+#endif

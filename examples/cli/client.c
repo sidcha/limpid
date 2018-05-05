@@ -30,7 +30,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <limpid.h>
+#include <limpid/cli.h>
 
 int main(int argc, char *argv[])
 {
