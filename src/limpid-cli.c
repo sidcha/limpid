@@ -33,13 +33,13 @@
 
 #include <limpid/core.h>
 
-struct limpid_cmd_s {
+struct limpid_cli_cmd_s {
 	char *trigger;
 	int (*cmd_handler)(int argc, char **argv, string_t **resp);
 };
 
-int limpid_num_cmds;
-struct limpid_cmd_s *limpid_cmd[LIMPID_MAX_COMMANDS];
+int limpid_num_cli_cmds;
+struct limpid_cli_cmd_s *limpid_cli_cmd[LIMPID_MAX_COMMANDS];
 
 static int set_args(char *args, char **argv)
 {
@@ -93,10 +93,10 @@ int limpid_process_cli_cmd(lchunk_t *cmd, lchunk_t **resp)
 	cmd_buf[cmd->length] = 0;
 	argv = parse_args(cmd_buf, &argc);
 
-	for (i=0; i<limpid_num_cmds; i++) {
-		if (strcmp(cmd->trigger, limpid_cmd[i]->trigger) != 0)
+	for (i=0; i<limpid_num_cli_cmds; i++) {
+		if (strcmp(cmd->trigger, limpid_cli_cmd[i]->trigger) != 0)
 			continue;
-		limpid_cmd[i]->cmd_handler(argc, argv, &resp_str);
+		limpid_cli_cmd[i]->cmd_handler(argc, argv, &resp_str);
 		p = resp_str->arr;
 		len = resp_str->len;
 		*resp = limpid_make_chunk(TYPE_RESPONSE, cmd->trigger, p, len);
@@ -105,35 +105,34 @@ int limpid_process_cli_cmd(lchunk_t *cmd, lchunk_t **resp)
 	}
 
 	free_parsed_args(argv);
-	return i >= limpid_num_cmds ? -1 : 0;
+	return i >= limpid_num_cli_cmds ? -1 : 0;
 }
 
 int limpid_register_cli_handle(const char *trigger, int (*handler)(int, char **, string_t **))
 {
 	int id;
-	struct limpid_cmd_s *cmd;
+	struct limpid_cli_cmd_s *cmd;
 
-	for (id=0; id<limpid_num_cmds; id++) {
-		if (strcmp(trigger, limpid_cmd[id]->trigger) == 0)
+	for (id=0; id<limpid_num_cli_cmds; id++) {
+		if (strcmp(trigger, limpid_cli_cmd[id]->trigger) == 0)
 			break;
 	}
 
-	if (id >= limpid_num_cmds) {
-		if(limpid_num_cmds+1 >= LIMPID_MAX_COMMANDS)
+	if (id >= limpid_num_cli_cmds) {
+		if(limpid_num_cli_cmds+1 >= LIMPID_MAX_COMMANDS)
 			return -1;
-		
 	}
 
-	cmd = calloc(1, sizeof(struct limpid_cmd_s));
+	cmd = calloc(1, sizeof(struct limpid_cli_cmd_s));
 	if (cmd == NULL) {
 		fprintf(stderr, "limpid: failed to alloc memory for command\n");
 		return -1;
 	}
 
-	id = limpid_num_cmds++;
+	id = limpid_num_cli_cmds++;
 	cmd->trigger = strdup(trigger);
 	cmd->cmd_handler = handler;
-	limpid_cmd[id] = cmd;
+	limpid_cli_cmd[id] = cmd;
 	return 0;
 }
 

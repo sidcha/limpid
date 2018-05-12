@@ -35,7 +35,7 @@ int cmd_ping(int argc, char *argv[], string_t **resp)
 	int i;
 	string_t *s = new_string(128);
 
-	string_printf(s, "a", "pong");
+	string_printf(s, "a", "pong"); // "a":apend; anything else, repleace.
 
 	for (i=0; i<argc; i++) {
 		string_printf(s, "a", "\n[%d] %s", i, argv[i]);
@@ -54,6 +54,7 @@ int main(int argc, char *argv[])
 	while (1) {
 		// Your application code!
 	}
+
 	return 0;
 }
 
