@@ -22,17 +22,26 @@
 
     Author : Siddharth Chandrasekaran
     Email  : siddharth@embedjournal.com
-    Date   : Sat May  5 11:49:50 IST 2018
+    Date   : Sat May 12 23:37:06 IST 2018
 
 ******************************************************************************/
 
-#ifndef _LIMPID_CONFIG_H
-#define _LIMPID_CONFIG_H
+#ifndef _LIMPID_JSON_H
+#define _LIMPID_JSON_H
 
-#define LIMPID_SERVER_PATH         "/tmp/limpid-server"
-#define LIMPID_MAX_COMMANDS        128
-#define LIMPID_READ_LINE_MAXLEN    128
-#define LIMPID_TRIGGER_MAXLEN      64
-#define LIMPID_JSON_PRINT_BUFF_LEN 128
+#include <limpid/common.h>
+#include <limpid/lib-json.h>
+#include <limpid/lib-string.h>
+
+#define LIMPID_REG_JSON(x,y)	\
+({				\
+	lhandle_t h;		\
+	h.type=LHANDLE_JSON;	\
+	h.trigger=x;		\
+	h.json_handle=y;	\
+	limpid_register(&h);	\
+})
+
+int limpid_send_json_cmd(string_t *cmd, string_t **resp);
 
 #endif

@@ -52,9 +52,13 @@ typedef int (*processor_t)(lchunk_t *, lchunk_t **);
 int limpid_register_cli_handle(const char *trigger, int (*handler)(int, char **, string_t **));
 int limpid_process_cli_cmd(lchunk_t *cmd, lchunk_t **resp);
 
-processor_t processor[5] = {
+// JSON Handler
+int limpid_register_json_handle(const char *trigger, int (*handler)(json_t *, string_t *));
+int limpid_process_json_cmd(lchunk_t *cmd, lchunk_t **resp);
+
+processor_t processor[LHANDLE_SENTINEL] = {
 	limpid_process_cli_cmd,
-	NULL,
+	limpid_process_json_cmd
 };
 
 void say(const char *fmt, ...)
@@ -68,6 +72,7 @@ void say(const char *fmt, ...)
 
 static void *limpid_listener(void *arg)
 {
+	int hnd, type;
 	struct sockaddr_un sock_serv, cli_addr;
 
 	assert(arg);
@@ -97,19 +102,23 @@ static void *limpid_listener(void *arg)
 			say("failed at accept\n");
 			continue;
 		}
-		printf("limpid: accepted connection from a clinet\n");
+		//printf("limpid: accepted connection from a clinet\n");
 		lchunk_t *cmd=NULL, *resp=NULL;
-		lchunk_t *err = limpid_make_chunk(TYPE_RESPONSE, NULL, NULL, 0);
 		if (limpid_receive(ctx, &cmd) == 0) {
-			if (cmd->type >= LHANDLE_CLI && cmd->type <= LHANDLE_SENTINEL)
-				processor[cmd->type](cmd, &resp);
+			hnd = LDEC_PROC(cmd->type);
+			type = LDEC_PROC(cmd->type);
+			if (type >= LHANDLE_CLI && type <= LHANDLE_SENTINEL) {
+				processor[hnd](cmd, &resp);
+			}
 			free(cmd);
 		}
-		limpid_send(ctx, resp ? resp : err);
-		if (resp) free(resp);
-		free(err);
+		lchunk_t *err = limpid_make_chunk(TYPE_RESPONSE, NULL, NULL, 0);
+		if (limpid_send(ctx, resp ? resp : err)) {
+			if (resp) free(resp);
+			free(err);
+		}
 		close(ctx->client_fd);
-		printf("limpid: closed connection to client\n");
+		//printf("limpid: closed connection to client\n");
 	}
 	return NULL;
 }
@@ -162,7 +171,7 @@ limpid_t *limpid_connnect(const char *path)
 
 int limpid_send(limpid_t *ctx, lchunk_t *c)
 {
-	int ret = 0, fd, len;
+	int ret, fd, len;
 
 	assert(ctx);
 	assert(c);
@@ -171,9 +180,12 @@ int limpid_send(limpid_t *ctx, lchunk_t *c)
 	fd = (ctx->type == LIMPID_SERVER) ? ctx->client_fd : ctx->fd;
 	if ((ret = write(fd, c, len)) < 0) {
 		say("Error at write");
+		return -1;
 	}
 
-	return ret;
+	free(c);
+
+	return 0;
 }
 
 int limpid_receive(limpid_t *ctx, lchunk_t **c)
@@ -223,7 +235,7 @@ lchunk_t *limpid_make_chunk(int type, const char *trigger, void *data, int len)
 	int i;
 
 	lchunk_t *c = calloc(1, sizeof(lchunk_t)+len);
-	assert (c != NULL);
+	assert (c);
 
 	c->type = type;
 	if (trigger)
@@ -241,7 +253,11 @@ void limpid_register(lhandle_t *h)
 	case LHANDLE_CLI:
 		limpid_register_cli_handle(h->trigger, h->cli_handle);
 		break;
+	case LHANDLE_JSON:
+		limpid_register_json_handle(h->trigger, h->json_handle);
+		break;
 	default:
 		break;
 	}
 }
+

@@ -88,6 +88,7 @@ int limpid_process_cli_cmd(lchunk_t *cmd, lchunk_t **resp)
 	char *p=NULL, **argv=NULL, cmd_buf[256];
 	int i, argc, len=0;
 
+	printf("in cli cmd\n");
 	if (resp) *resp = NULL;
 	memcpy(cmd_buf, cmd->data, cmd->length);
 	cmd_buf[cmd->length] = 0;
@@ -99,7 +100,8 @@ int limpid_process_cli_cmd(lchunk_t *cmd, lchunk_t **resp)
 		limpid_cli_cmd[i]->cmd_handler(argc, argv, &resp_str);
 		p = resp_str->arr;
 		len = resp_str->len;
-		*resp = limpid_make_chunk(TYPE_RESPONSE, cmd->trigger, p, len);
+		*resp = limpid_make_chunk(LENC_TYPE(LHANDLE_CLI, TYPE_RESPONSE),
+				cmd->trigger, p, len);
 		free(resp_str);
 		break;
 	}
@@ -184,8 +186,8 @@ int limpid_send_cli_cmd(char *trigger, char*args, char **resp)
 	int ret = 1;
 
 	limpid_t *ctx = limpid_connnect("/tmp/limpid-server");
-	lchunk_t *c = limpid_make_chunk(TYPE_COMMAND, trigger,
-			args, args ? strlen(args) : 0);
+	lchunk_t *c = limpid_make_chunk(LENC_TYPE(LHANDLE_CLI, TYPE_COMMAND),
+			trigger, args, args ? strlen(args) : 0);
 
 	if (limpid_send(ctx, c) < 0) {
 		fprintf(stderr, "Failed to send command to server.\n");

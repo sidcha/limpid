@@ -22,17 +22,31 @@
 
     Author : Siddharth Chandrasekaran
     Email  : siddharth@embedjournal.com
-    Date   : Sat May  5 11:49:50 IST 2018
+    Date   : Sat Nov  4 21:31:56 IST 2017
 
 ******************************************************************************/
 
-#ifndef _LIMPID_CONFIG_H
-#define _LIMPID_CONFIG_H
+#include <unistd.h>
 
-#define LIMPID_SERVER_PATH         "/tmp/limpid-server"
-#define LIMPID_MAX_COMMANDS        128
-#define LIMPID_READ_LINE_MAXLEN    128
-#define LIMPID_TRIGGER_MAXLEN      64
-#define LIMPID_JSON_PRINT_BUFF_LEN 128
+#include <limpid/json.h>
 
-#endif
+int cmd_ping(json_t *in_json, string_t *resp)
+{
+	json_printf(resp, "response", "pong");
+
+	return 0;
+}
+
+int main(int argc, char *argv[])
+{
+	limpid_server_init("/tmp/limpid-server");
+
+	LIMPID_REG_JSON("ping", cmd_ping);
+
+	while (1) {
+		// Your application code!
+	}
+
+	return 0;
+}
+

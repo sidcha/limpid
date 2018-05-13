@@ -21,55 +21,30 @@
 # 
 #   Author : Siddharth Chandrasekaran
 #   Email  : siddharth@embedjournal.com
-#   Date   : Thu Oct 19 06:02:01 IST 2017
+#   Date   : Sat May 12 20:23:12 IST 2018
 # 
 
-MAJOR_NUMBER = 0
-MINOR_NUMBER = 1
+ROOT_DIR ?= ../..
 
-VERSION  := v$(MAJOR_NUMBER).$(MINOR_NUMBER)
-ROOT_DIR := $(shell pwd)
+CFLAGS    = -Wall -I$(ROOT_DIR)/include -g3 -O
+LDFLAGS   = -pthread -L$(ROOT_DIR)/lib -llimpid
 
-CC       := $(CROSS_COMPILE)gcc
-AR       := $(CROSS_COMPILE)ar
+all: app client
 
-CFLAGS   = -Wall -Iinclude -DVERSION="$(VERSION)" -g3 -O
-LDFLAGS  = -pthread -Llib -llimpid
-PREFIX  ?= /usr
+app: sample_app.o
+	@echo "$(CC): linking $@..."
+	@$(CC) -o $@ $^ $(LDFLAGS)
 
-export
-
-OBJ     := obj/limpid-core.o obj/lib-read-line.o obj/lib-string.o obj/lib-json.o
-OBJ     += obj/limpid-cli.o obj/limpid-json.o
-
-all: liblimpid example
-
-liblimpid: lib/liblimpid.a
-
-example:
-	@echo "Building examples..."
-	@make -s -C examples/cli all
-	@make -s -C examples/json all
+client: client.o
+	@echo "$(CC): linking $@..."
+	@$(CC) -o $@ $^ $(LDFLAGS)
 
 clean:
-	@make -s -C examples/cli clean
-	@make -s -C examples/json clean
-	@rm -rf lib/* obj/
+	@rm -rf *.o app client
 
-install:
-	@mkdir -p $(PREFIX)/lib/ $(PREFIX)/include/
-	@cp -f lib/*.a $(PREFIX)/lib/
-	@cp -rf include/* $(PREFIX)/include/
-
-lib/liblimpid.a: $(OBJ)
-	@mkdir -p lib
-	@echo "$(AR): creating limpid library"
-	@$(AR) rcs -o $@ $^
-
-obj/%.o: src/%.c
-	@test -d $@ || mkdir -p $(dir $@)
-	@echo "$(CC): building $<"
+%.o: %.c
+	@echo "$(CC): building $<..."
 	@$(CC) $(CFLAGS) -c $< -o $@
 
-.PHONY: all clean
+.PHONY: all app client clean
 

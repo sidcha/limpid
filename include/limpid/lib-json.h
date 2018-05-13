@@ -22,17 +22,39 @@
 
     Author : Siddharth Chandrasekaran
     Email  : siddharth@embedjournal.com
-    Date   : Sat May  5 11:49:50 IST 2018
+    Date   : Sun May 13 09:22:07 IST 2018
 
 ******************************************************************************/
 
-#ifndef _LIMPID_CONFIG_H
-#define _LIMPID_CONFIG_H
+#ifndef _LIB_JSON_H
+#define _LIB_JSON_H
 
-#define LIMPID_SERVER_PATH         "/tmp/limpid-server"
-#define LIMPID_MAX_COMMANDS        128
-#define LIMPID_READ_LINE_MAXLEN    128
-#define LIMPID_TRIGGER_MAXLEN      64
-#define LIMPID_JSON_PRINT_BUFF_LEN 128
+#include <limpid/lib-string.h>
+
+typedef struct {
+	int kofs;
+	int klen;
+	int vofs;
+	int vlen;
+} jsontok_t;
+
+typedef struct {
+	int num_keys;
+	string_t *json_str;
+	jsontok_t *toks;
+} json_t;
+
+json_t *json_parse(string_t *json_str);
+void json_free(json_t *json);
+
+int json_find(string_t *json_str, const char *k, string_t **val);
+int json_strcmp(string_t *json_str, const char *k, const char *v);
+int json_sscanf(string_t *json_str, const char *k, const char *format, ...);
+
+int json_start(string_t *s);
+int json_end(string_t *s);
+int json_printf(string_t *s, const char *key, const char *format, ...);
+
+void json_pprint(string_t *);
 
 #endif

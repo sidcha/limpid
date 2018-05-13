@@ -26,48 +26,77 @@
 
 ******************************************************************************/
 
-#ifndef _LIMPID_H
-#define _LIMPID_H
-
-#include <stdint.h>
+#include <stdio.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include <limpid/common.h>
 #include <limpid/config.h>
 
-enum lchunk_type_e {
-	TYPE_COMMAND,
-	TYPE_RESPONSE,
-	TYPE_COMPLETION,
-};
+string_t *new_string3(int len, char *data, int data_len)
+{
+	if (len == data_len)
+		len++;  // Hack to allow for null termintion.
 
-typedef struct {
-	int type;       // see below
-	int fd;         // client or server fd
-	int client_fd;  // write-to-fd for server
-	char *path;     // path to socket.
-} limpid_t;
+	string_t *s = calloc(1, sizeof(string_t) + len);
+	if (s == NULL) {
+		fprintf(stderr, "limpid: error at alloc for string_t\n");
+		return NULL;
+	}
 
-#define LENC_TYPE(x,y)     (x | (y << 8))
-#define LDEC_PROC(x)  (x & 0xff)
-#define LDEC_CMD(x)   ((x >> 8) & 0x0ff)
+	s->max_len = len;
+	s->len = 0;
+	if (data && data_len) {
+		memcpy(s->arr, data, data_len);
+		s->len = data_len;
+	}
+	return s;
+}
 
-// limpid_t::type
-#define LIMPID_SERVER  0
-#define LIMPID_CLIENT  1
+int string_printf(string_t *str, char *mode, const char *fmt, ...)
+{
+	int ret;
+	va_list (args);
+	va_start(args, fmt);
+	int st = (mode[0] != 'a') ? 0 : str->len;
+	ret = vsnprintf(str->arr + st, str->max_len - st, fmt, args);
+	va_end(args);
+	if ((str->len + ret) >= str->max_len) {
+		str->len = str-> max_len;
+	} else {
+		str->len += ret;
+		str->arr[str->len] = 0;
+	}
+	return ret;
+}
 
-typedef struct {
-	int type;
-	char trigger[LIMPID_TRIGGER_MAXLEN];
-	int length;
-	uint8_t data[0];
-} lchunk_t;
+int string_append(string_t *str, char *mode, char *buf, int len)
+{
+	if ( str->len >= str->max_len || str->len < 0)
+		return -1;
 
-limpid_t *limpid_connnect(const char *path);
-void limpid_disconnect(limpid_t *ctx);
+	if (mode[0] == 'f')
+		len = str->max_len - str->len;
 
-lchunk_t *limpid_make_chunk(int type, const char *trigger, void *data, int len);
+	if ((str->len + len) > str->max_len)
+		return -1;
 
-int limpid_send(limpid_t *ctx, lchunk_t *c);
-int limpid_receive(limpid_t *ctx, lchunk_t **c);
+	int i, ovf=0;
+	for (i=0; i<len; i++) {
+		if (ovf) break;
+		str->arr[str->len] = buf[i];
+		str->len++;
+		if(str->len >= str->max_len)
+			ovf = 1;
+	}
 
-#endif
+	if (!ovf) {
+		/* We'll try to null terminate if the string hasn't
+		 * already over flown. This is only a added feature
+		 * so we won't be policing it.
+		 */
+		str->arr[str->len] = 0;
+	}
+	return i;
+}

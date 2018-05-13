@@ -30,34 +30,17 @@
 #define _LIMPID_COMMON_H
 
 #include <limpid/config.h>
+#include <limpid/lib-string.h>
+#include <limpid/lib-json.h>
 
-/* --- from src/string.c --------------------------------------------------- */
+#define safe_free(x) do { if(x) free(x); } while(0)
 
-typedef struct {
-	int len;
-	int max_len;
-	char arr[0];
-} string_t;
-
-#define CREATE_STRING(x,y)	\
-({				\
-	char x##arr[y];		\
-	string_t x = {		\
-		.arr=x##arr,	\
-		.len=0,		\
-		.max_len=y	\
-	}			\
-})
-
-string_t *new_string(int len);
-int string_printf(string_t *str, char *mode, const char *fmt, ...);
-int string_append(string_t *str, char *mode, char *buf, int len);
-
-/* --- from src/string.c --------------------------------------------------- */
+/* --- from src/read-line.c ------------------------------------------------ */
 
 char *read_line(const char *prompt);
 
 /* --- from src/limpid-core.c ---------------------------------------------- */
+
 typedef enum {
 	LHANDLE_CLI,
 	LHANDLE_JSON,
@@ -69,6 +52,7 @@ typedef struct {
 	const char *trigger;
 	union {
 		int (*cli_handle)(int, char **, string_t **);
+		int (*json_handle)(json_t *, string_t *);
 	};
 } lhandle_t;
 
