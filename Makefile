@@ -54,7 +54,7 @@ example:
 clean:
 	@make -s -C examples/cli clean
 	@make -s -C examples/json clean
-	@rm -rf lib/* obj/
+	@rm -rf lib/* obj/ *.tar
 
 install:
 	@mkdir -p $(PREFIX)/lib/ $(PREFIX)/include/
@@ -70,6 +70,11 @@ obj/%.o: src/%.c
 	@test -d $@ || mkdir -p $(dir $@)
 	@echo "$(CC): building $<"
 	@$(CC) $(CFLAGS) -c $< -o $@
+
+archive:
+	@git archive --format=tar --prefix=limpid/ \
+		--output=limpid-$$(git describe).tar master
+	@tar -f limpid-$$(git describe).tar --delete limpid/.gitignore
 
 .PHONY: all clean
 

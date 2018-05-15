@@ -1,6 +1,7 @@
 *.o
 *.a
 *.out
+*.tar
 
 tags
 core
