@@ -11,6 +11,9 @@ obj/
 examples/cli/app
 examples/cli/prompt
 
+examples/json/app
+examples/json/client
+
 .vscode
 .project
 .cproject
