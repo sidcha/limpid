@@ -72,7 +72,7 @@ void say(const char *fmt, ...)
 
 static void *limpid_listener(void *arg)
 {
-	int hnd, type;
+	int hnd, ret=-1;
 	struct sockaddr_un sock_serv, cli_addr;
 
 	assert(arg);
@@ -99,23 +99,37 @@ static void *limpid_listener(void *arg)
 	while (1) {
 		ctx->client_fd = accept(ctx->fd, (struct sockaddr *)&cli_addr, &len);
 		if (ctx->client_fd < 0) {
-			say("failed at accept\n");
+			say("server - failed at accept\n");
 			continue;
 		}
 		//printf("limpid: accepted connection from a clinet\n");
 		lchunk_t *cmd=NULL, *resp=NULL;
-		if (limpid_receive(ctx, &cmd) == 0) {
-			hnd = LDEC_PROC(cmd->type);
-			type = LDEC_PROC(cmd->type);
-			if (type >= LHANDLE_CLI && type <= LHANDLE_SENTINEL) {
-				processor[hnd](cmd, &resp);
-			}
-			free(cmd);
+		if (limpid_receive(ctx, &cmd)) {
+			say("server - receive failed\n");
+			close(ctx->client_fd);
+			continue;
 		}
-		lchunk_t *err = limpid_make_chunk(TYPE_RESPONSE, NULL, NULL, 0);
-		if (limpid_send(ctx, resp ? resp : err)) {
-			if (resp) free(resp);
-			free(err);
+		hnd = LDEC_PROC(cmd->type);
+		if (hnd < LHANDLE_CLI && hnd >= LHANDLE_SENTINEL) {
+			say("server - invalid command!\n");
+			free(cmd);
+			close(ctx->client_fd);
+			continue;
+		}
+		ret = processor[hnd](cmd, &resp);
+		free(cmd);
+		if (resp == NULL) {
+			// make a dummy resp if processor didn't return one.
+			resp = limpid_make_chunk(TYPE_RESPONSE, NULL, NULL, 0);
+		}
+		resp->status = ret;
+		if (limpid_send(ctx, resp)) {
+			/* send failed, the client may be stuck endlessly waiting for 
+			 * this data. We can do nothing but to close the connetion now
+			 * and trigger a SIGPIPE and expect the other side to catch it.
+			 */
+			say("server - send failed\n");
+			free(resp);
 		}
 		close(ctx->client_fd);
 		//printf("limpid: closed connection to client\n");
@@ -190,7 +204,7 @@ int limpid_send(limpid_t *ctx, lchunk_t *c)
 
 int limpid_receive(limpid_t *ctx, lchunk_t **c)
 {
-	int fd;
+	int fd, tout=0;
 	volatile int read1, read2=-1;
 
 	assert(ctx);
@@ -204,7 +218,11 @@ int limpid_receive(limpid_t *ctx, lchunk_t **c)
 			usleep(100);
 			ioctl(fd, FIONREAD, &read2);
 		} else {
-			usleep(10);
+			if (++tout > 5000) {
+				say("Read timeout!\n");
+				return -1;
+			}
+			usleep(100);
 		}
 	} while (read1 != read2);
 

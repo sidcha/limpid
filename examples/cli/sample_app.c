@@ -27,6 +27,7 @@
 ******************************************************************************/
 
 #include <unistd.h>
+#include <stdio.h>
 
 #include <limpid/cli.h>
 
@@ -45,11 +46,18 @@ int cmd_ping(int argc, char *argv[], string_t **resp)
 	return 0;
 }
 
+int cmd_do_fluff(int argc, char *argv[], string_t **resp)
+{
+	printf("This message is from parent process.\n");
+	return 0;
+}
+
 int main(int argc, char *argv[])
 {
 	limpid_server_init("/tmp/limpid-server");
 
 	LIMPID_REG_CLI("ping", cmd_ping);
+	LIMPID_REG_CLI("fluff", cmd_do_fluff);
 
 	while (1) {
 		// Your application code!

@@ -136,12 +136,14 @@ int limpid_send_json_cmd(string_t *json, string_t **resp)
 		exit(EXIT_FAILURE);
 	}
 
-	if (limpid_receive(ctx, &c)) {
-		fprintf(stderr, "Failed to receive response.\n");
-		exit(EXIT_FAILURE);
-	}
-
 	do {
+		if (resp == NULL) break;
+
+		if (limpid_receive(ctx, &c)) {
+			fprintf(stderr, "Failed to receive response.\n");
+			break;
+		}
+
 		if (c->length == 0) {
 			fprintf(stderr, "limpid: unknown command '%s'\n", trigger);
 			break;

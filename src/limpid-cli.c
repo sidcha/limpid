@@ -86,10 +86,8 @@ int limpid_process_cli_cmd(lchunk_t *cmd, lchunk_t **resp)
 {
 	string_t *resp_str=NULL;
 	char *p=NULL, **argv=NULL, cmd_buf[256];
-	int i, argc, len=0;
+	int i, argc, len=0, ret;
 
-	printf("in cli cmd\n");
-	if (resp) *resp = NULL;
 	memcpy(cmd_buf, cmd->data, cmd->length);
 	cmd_buf[cmd->length] = 0;
 	argv = parse_args(cmd_buf, &argc);
@@ -97,17 +95,25 @@ int limpid_process_cli_cmd(lchunk_t *cmd, lchunk_t **resp)
 	for (i=0; i<limpid_num_cli_cmds; i++) {
 		if (strcmp(cmd->trigger, limpid_cli_cmd[i]->trigger) != 0)
 			continue;
-		limpid_cli_cmd[i]->cmd_handler(argc, argv, &resp_str);
+		break;
+	}
+
+	if (i >= limpid_num_cli_cmds)
+		return -1;
+
+	ret = limpid_cli_cmd[i]->cmd_handler(argc, argv, &resp_str);
+
+	if (resp_str) {
 		p = resp_str->arr;
 		len = resp_str->len;
 		*resp = limpid_make_chunk(LENC_TYPE(LHANDLE_CLI, TYPE_RESPONSE),
 				cmd->trigger, p, len);
 		free(resp_str);
-		break;
 	}
 
 	free_parsed_args(argv);
-	return i >= limpid_num_cli_cmds ? -1 : 0;
+
+	return ret;
 }
 
 int limpid_register_cli_handle(const char *trigger, int (*handler)(int, char **, string_t **))
@@ -200,13 +206,15 @@ int limpid_send_cli_cmd(char *trigger, char*args, char **resp)
 	}
 
 	do {
-		if (c->length == 0) {
+		if (resp == NULL) break;
+
+		if (c->status < 0) {
 			fprintf(stderr, "limpid: unknown command '%s'\n", trigger);
 			break;
 		}
 
-		if (resp == NULL)
-			break;
+		if (c->length == 0) // AND status >= 0, so it's a command format error.
+			break;      // expect the cmd_handler to have printed something.
 
 		*resp = malloc(sizeof(char) * (c->length + 1));
 		if (*resp == NULL) {

@@ -57,6 +57,7 @@ typedef struct {
 
 typedef struct {
 	int type;
+	int status;
 	char trigger[LIMPID_TRIGGER_MAXLEN];
 	int length;
 	uint8_t data[0];
