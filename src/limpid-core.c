@@ -120,7 +120,7 @@ static void *limpid_listener(void *arg)
 		free(cmd);
 		if (resp == NULL) {
 			// make a dummy resp if processor didn't return one.
-			resp = limpid_make_chunk(TYPE_RESPONSE, NULL, NULL, 0);
+			resp = limpid_make_chunk(TYPE_RESPONSE, NULL, 0);
 		}
 		resp->status = ret;
 		if (limpid_send(ctx, resp)) {
@@ -183,31 +183,38 @@ limpid_t *limpid_connnect(const char *path)
 	return ctx;
 }
 
-int limpid_send(limpid_t *ctx, lchunk_t *c)
+int limpid_send(limpid_t *ctx, lchunk_t *chunk)
 {
-	int fd, len;
-
+	int i, fd, len;
+	uint8_t *p = (uint8_t *)chunk, checksum;
 	assert(ctx);
-	assert(c);
+	assert(chunk);
 
-	len = sizeof(lchunk_t) + c->length;
+	len = sizeof(lchunk_t) + chunk->length;
+	chunk->checksum = 0; checksum = 0;
+	for (i=0; i<len; i++)
+		checksum ^= p[i];
+	chunk->checksum = checksum;
+
 	fd = (ctx->type == LIMPID_SERVER) ? ctx->client_fd : ctx->fd;
-	if (write(fd, c, len) != len) {
+	if (write(fd, chunk, len) != len) {
 		say("Error, unable to send data\n");
 		return -1;
 	}
 
-	free(c);
-
+	free(chunk);
 	return 0;
 }
 
-int limpid_receive(limpid_t *ctx, lchunk_t **c)
+int limpid_receive(limpid_t *ctx, lchunk_t **chunk)
 {
-	int fd, tout=0;
-	volatile int read1, read2=-1;
+	int i, fd, tout=0, read1, read2=-1, len;
+	uint8_t *p, checksum, c_checksum=0;
+	void *read_data;
+	lchunk_t *c;
 
 	assert(ctx);
+	assert(chunk);
 
 	fd = (ctx->type == LIMPID_SERVER) ? ctx->client_fd : ctx->fd;
 	do {
@@ -231,7 +238,7 @@ int limpid_receive(limpid_t *ctx, lchunk_t **c)
 		return -1;
 	}
 
-	void *read_data = malloc(read1);
+	read_data = malloc(read1);
 	if (read_data == NULL) {
 		say("Alloc error!\n");
 		return -1;
@@ -242,15 +249,30 @@ int limpid_receive(limpid_t *ctx, lchunk_t **c)
 		free(read_data);
 		return -1;
 	}
+	
+	c = (lchunk_t *) read_data;
+	checksum = c->checksum;
+	c->checksum = 0;
+	p = (uint8_t *)c;
+	len = sizeof(lchunk_t) + c->length;
+	for (i=0; i<len; i++) {
+		c_checksum ^= p[i];
+	}
 
-	*c = (lchunk_t *) read_data;
-
-	if ((sizeof(lchunk_t) + (*c)->length) != read1) {
-		say("Invalid data\n");
+	if (c_checksum != checksum) {
+		say("checksum mismatch! exp:0x%02x calc:0x%02x\n",
+				c_checksum, c_checksum);
 		free(read_data);
 		return -1;
 	}
 
+	if (c->version != LIMPID_API_VERSION) {
+		say("API Version mismatch: got:%d exp:%d\n",
+				c->version, LIMPID_API_VERSION);
+		return -1;
+	}
+
+	*chunk = c;
 	return 0;
 }
 
@@ -262,20 +284,17 @@ void limpid_disconnect(limpid_t *ctx)
 	free(ctx);
 }
 
-lchunk_t *limpid_make_chunk(int type, const char *trigger, void *data, int len)
+lchunk_t *limpid_make_chunk(int type, void *data, int len)
 {
-	int i;
-
 	lchunk_t *c = calloc(1, sizeof(lchunk_t)+len);
 	assert (c);
 
+	c->checksum = 0; // computed/checked in send/receive
+	c->version = LIMPID_API_VERSION;
+	c->magic = LIMPID_MAGIC;
 	c->type = type;
-	if (trigger)
-		strncpy(c->trigger, trigger, LIMPID_TRIGGER_MAXLEN-1);
 	c->length = len;
-	for (i=0; i<len; i++) {
-		c->data[i] = *((uint8_t *)data + i);
-	}
+	memcpy(c->data, data, len);
 	return c;
 }
 

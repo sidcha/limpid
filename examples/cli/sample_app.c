@@ -48,7 +48,7 @@ int cmd_ping(int argc, char *argv[], string_t **resp)
 
 int cmd_do_fluff(int argc, char *argv[], string_t **resp)
 {
-	printf("This message is from parent process.\n");
+	printf("Server got the fluff command.\n");
 	return 0;
 }
 

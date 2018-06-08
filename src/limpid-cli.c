@@ -38,6 +38,11 @@ struct limpid_cli_cmd_s {
 	int (*cmd_handler)(int argc, char **argv, string_t **resp);
 };
 
+struct cli_chunk_s {
+	char trigger[LIMPID_CLI_TRIGGER_MAXLEN];
+	uint8_t args[0];
+};
+
 int limpid_num_cli_cmds;
 struct limpid_cli_cmd_s *limpid_cli_cmd[LIMPID_MAX_COMMANDS];
 
@@ -85,15 +90,25 @@ static void free_parsed_args(char **argv)
 int limpid_process_cli_cmd(lchunk_t *cmd, lchunk_t **resp)
 {
 	string_t *resp_str=NULL;
-	char *p=NULL, **argv=NULL, cmd_buf[256];
-	int i, argc, len=0, ret;
+	char *p=NULL, **argv=NULL, args_buf[LIMPID_CLI_ARGS_MAXLEN];
+	int i, argc, len=0, ret, args_len, type;
 
-	memcpy(cmd_buf, cmd->data, cmd->length);
-	cmd_buf[cmd->length] = 0;
-	argv = parse_args(cmd_buf, &argc);
+	struct cli_chunk_s *s = (struct cli_chunk_s *)cmd->data;
+	args_len = cmd->length - LIMPID_CLI_TRIGGER_MAXLEN;
+	if (args_len < 0) args_len = 0;
+	if (args_len >= LIMPID_CLI_ARGS_MAXLEN-1) {
+		printf("Command length (%d) error\n", args_len);
+		return -1;
+	}
+
+	if (args_len) {
+		memcpy(args_buf, s->args, args_len);
+	}
+	args_buf[args_len] = 0;
+	argv = parse_args(args_buf, &argc);
 
 	for (i=0; i<limpid_num_cli_cmds; i++) {
-		if (strcmp(cmd->trigger, limpid_cli_cmd[i]->trigger) == 0)
+		if (strcmp(s->trigger, limpid_cli_cmd[i]->trigger) == 0)
 			break;
 	}
 
@@ -105,13 +120,12 @@ int limpid_process_cli_cmd(lchunk_t *cmd, lchunk_t **resp)
 	if (resp_str) {
 		p = resp_str->arr;
 		len = resp_str->len;
-		*resp = limpid_make_chunk(LENC_TYPE(LHANDLE_CLI, TYPE_RESPONSE),
-				cmd->trigger, p, len);
+		type = LENC_TYPE(LHANDLE_CLI, TYPE_RESPONSE);
+		*resp = limpid_make_chunk(type, p, len);
 		free(resp_str);
 	}
 
 	free_parsed_args(argv);
-
 	return ret;
 }
 
@@ -188,11 +202,28 @@ int limpid_read_cli_cmd(const char *prompt, char **trigger, char **args)
 
 int limpid_send_cli_cmd(char *trigger, char*args, char **resp)
 {
-	int ret = 1;
+	int ret = 1, args_len;
+	struct cli_chunk_s *s;
+	limpid_t *ctx;
+	lchunk_t *c;
 
-	limpid_t *ctx = limpid_connnect("/tmp/limpid-server");
-	lchunk_t *c = limpid_make_chunk(LENC_TYPE(LHANDLE_CLI, TYPE_COMMAND),
-			trigger, args, args ? strlen(args) : 0);
+	args_len = args ? strlen(args): 0;
+	s = malloc(sizeof(struct cli_chunk_s) + args_len);
+	if (s == NULL) {
+		printf("malloc error\n");
+		return -1;
+	}
+	strncpy(s->trigger, trigger, LIMPID_CLI_TRIGGER_MAXLEN-1);
+	s->trigger[LIMPID_CLI_TRIGGER_MAXLEN-1] = 0; // force terminate
+	if (args) {
+		memcpy(s->args, args, args_len);
+	}
+
+	c = limpid_make_chunk(LENC_TYPE(LHANDLE_CLI, TYPE_COMMAND),
+			s, sizeof(struct cli_chunk_s) + args_len);
+	free(s);
+
+	ctx = limpid_connnect("/tmp/limpid-server");
 
 	if (limpid_send(ctx, c) < 0) {
 		fprintf(stderr, "Failed to send command to server.\n");

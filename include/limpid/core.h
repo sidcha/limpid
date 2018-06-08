@@ -48,27 +48,29 @@ typedef struct {
 } limpid_t;
 
 #define LENC_TYPE(x,y)     (x | (y << 8))
-#define LDEC_PROC(x)  (x & 0xff)
-#define LDEC_CMD(x)   ((x >> 8) & 0x0ff)
+#define LDEC_PROC(x)       (x & 0xff)
+#define LDEC_CMD(x)        ((x >> 8) & 0x0ff)
 
 // limpid_t::type
 #define LIMPID_SERVER  0
 #define LIMPID_CLIENT  1
 
 typedef struct {
-	int type;
-	int status;
-	char trigger[LIMPID_TRIGGER_MAXLEN];
-	int length;
+	uint8_t version;
+	uint8_t type;
+	uint8_t status;
+	uint8_t magic;
+	uint8_t checksum;
+	uint32_t length;
 	uint8_t data[0];
 } lchunk_t;
 
 limpid_t *limpid_connnect(const char *path);
 void limpid_disconnect(limpid_t *ctx);
 
-lchunk_t *limpid_make_chunk(int type, const char *trigger, void *data, int len);
+lchunk_t *limpid_make_chunk(int type, void *data, int len);
 
-int limpid_send(limpid_t *ctx, lchunk_t *c);
-int limpid_receive(limpid_t *ctx, lchunk_t **c);
+int limpid_send(limpid_t *ctx, lchunk_t *chunk);
+int limpid_receive(limpid_t *ctx, lchunk_t **chunk);
 
 #endif

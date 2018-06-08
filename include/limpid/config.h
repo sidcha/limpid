@@ -29,10 +29,15 @@
 #ifndef _LIMPID_CONFIG_H
 #define _LIMPID_CONFIG_H
 
+#define LIMPID_API_VERSION         1
+#define LIMPID_MAGIC               0x48
 #define LIMPID_SERVER_PATH         "/tmp/limpid-server"
 #define LIMPID_MAX_COMMANDS        128
 #define LIMPID_READ_LINE_MAXLEN    128
-#define LIMPID_TRIGGER_MAXLEN      64
+
+#define LIMPID_CLI_TRIGGER_MAXLEN  64
+#define LIMPID_CLI_ARGS_MAXLEN     256
+
 #define LIMPID_JSON_PRINT_BUFF_LEN 128
 
 #endif

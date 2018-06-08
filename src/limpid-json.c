@@ -44,12 +44,29 @@ struct limpid_json_cmd_s *limpid_json_cmd[LIMPID_MAX_COMMANDS];
 
 int limpid_process_json_cmd(lchunk_t *cmd, lchunk_t **resp)
 {
+	char trigger[128];
 	string_t *resp_str;	
 	int ret=-1, i;
 
 	if (resp) *resp = NULL;
 
+	string_t *value;
 	string_t *s = new_string3(cmd->length, (char *)cmd->data, cmd->length);
+
+	if (json_find(s, "command", &value)) {
+		fprintf(stderr, "limpid: unable to find key command in json\n");
+		return -1;
+	}
+
+	if (value->len >= 128) {
+		fprintf(stderr, "limpid: key command value exceeds 128 bytes\n");
+		return -1;
+	}
+
+	strncpy(trigger, value->arr, value->len);
+	trigger[value->len] = 0;
+	free(value);
+
 	json_t *json = json_parse(s);
 	if (json == NULL) {
 		printf("json parse error: len:%d str:%s\n", s->len, s->arr);
@@ -58,18 +75,18 @@ int limpid_process_json_cmd(lchunk_t *cmd, lchunk_t **resp)
 	}
 
 	for (i=0; i<limpid_num_json_cmds; i++) {
-		if (strcmp(cmd->trigger, limpid_json_cmd[i]->trigger) == 0)
+		if (strcmp(trigger, limpid_json_cmd[i]->trigger) == 0)
 			break;
 	}
 
 	if (i < limpid_num_json_cmds) {
 		resp_str = new_string(512);
 		json_start(resp_str);
-		json_printf(resp_str, "command", "%s", cmd->trigger);
+		json_printf(resp_str, "command", "%s", trigger);
 		ret = limpid_json_cmd[i]->cmd_handler(json, resp_str);
 		json_end(resp_str);
 		*resp = limpid_make_chunk(LENC_TYPE(LHANDLE_JSON, TYPE_RESPONSE),
-				cmd->trigger, resp_str->arr, resp_str->len);
+				resp_str->arr, resp_str->len);
 		free(resp_str);
 	}
 
@@ -110,27 +127,12 @@ int limpid_send_json_cmd(string_t *json, string_t **resp)
 {
 	char trigger[128];
 	int ret = 1;
-	string_t *value;
 	limpid_t *ctx;
 	lchunk_t *c;
 
-	if (json_find(json, "command", &value)) {
-		fprintf(stderr, "limpid: unable to find key command in json\n");
-		return -1;
-	}
-
-	if (value->len >= 128) {
-		fprintf(stderr, "limpid: key command value exceeds 128 bytes\n");
-		return -1;
-	}
-
-	strncpy(trigger, value->arr, value->len);
-	trigger[value->len] = 0;
-	free(value);
-
 	ctx = limpid_connnect("/tmp/limpid-server");
 	c = limpid_make_chunk(LENC_TYPE(LHANDLE_JSON, TYPE_COMMAND),
-			trigger, json->arr, json->len);
+			json->arr, json->len);
 
 	if (limpid_send(ctx, c) < 0) {
 		fprintf(stderr, "Failed to send command to server.\n");

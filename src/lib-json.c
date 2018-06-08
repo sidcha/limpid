@@ -188,6 +188,8 @@ int json_find(string_t *json_str, const char *k, string_t **val)
 	string_t *key;
 
 	json_t *j = json_parse(json_str);
+	if (j == NULL)
+		return -1;
 
 	for (i=0; i<j->num_keys; i++) {
 		json_to_string(j, i, &key, val);
