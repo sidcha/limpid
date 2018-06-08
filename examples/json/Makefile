@@ -32,18 +32,18 @@ LDFLAGS   = -pthread -L$(ROOT_DIR)/lib -llimpid
 all: app client
 
 app: sample_app.o
-	@echo "$(CC): linking $@..."
+	@echo " CC linking  examples/json/$@"
 	@$(CC) -o $@ $^ $(LDFLAGS)
 
 client: client.o
-	@echo "$(CC): linking $@..."
+	@echo " CC linking  examples/json/$@"
 	@$(CC) -o $@ $^ $(LDFLAGS)
 
 clean:
 	@rm -rf *.o app client
 
 %.o: %.c
-	@echo "$(CC): building $<..."
+	@echo " CC building examples/json/$<"
 	@$(CC) $(CFLAGS) -c $< -o $@
 
 .PHONY: all app client clean

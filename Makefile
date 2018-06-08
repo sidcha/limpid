@@ -25,7 +25,7 @@
 # 
 
 MAJOR_NUMBER = 0
-MINOR_NUMBER = 1
+MINOR_NUMBER = 2
 
 VERSION  := v$(MAJOR_NUMBER).$(MINOR_NUMBER)
 ROOT_DIR := $(shell pwd)
@@ -33,7 +33,7 @@ ROOT_DIR := $(shell pwd)
 CC       := $(CROSS_COMPILE)gcc
 AR       := $(CROSS_COMPILE)ar
 
-CFLAGS   = -Wall -Iinclude -DVERSION="$(VERSION)" -g3 -O
+CFLAGS   = -Wall -Iinclude -DVERSION="$(VERSION)" $(ENV_CFLAGS) -g3 -O3
 LDFLAGS  = -pthread -Llib -llimpid
 PREFIX  ?= /usr
 
@@ -42,12 +42,21 @@ export
 OBJ     := obj/limpid-core.o obj/lib-read-line.o obj/lib-string.o obj/lib-json.o
 OBJ     += obj/limpid-cli.o obj/limpid-json.o
 
-all: liblimpid example
+all: info liblimpid example
+	@echo
+
+info:
+	@echo
+	@echo " VERSION = $(MAJOR_NUMBER).$(MINOR_NUMBER)"
+	@echo " CC      = $(CC)"
+	@echo " AR      = $(AR)"
+	@echo " CFLAGS  = $(CFLAGS)"
+	@echo " LDFLAGS = $(LDFLAGS)"
+	@echo
 
 liblimpid: lib/liblimpid.a
 
 example:
-	@echo "Building examples..."
 	@make -s -C examples/cli all
 	@make -s -C examples/json all
 
@@ -63,12 +72,12 @@ install:
 
 lib/liblimpid.a: $(OBJ)
 	@mkdir -p lib
-	@echo "$(AR): creating limpid library"
+	@echo " AR creating $@"
 	@$(AR) rcs -o $@ $^
 
 obj/%.o: src/%.c
 	@test -d $@ || mkdir -p $(dir $@)
-	@echo "$(CC): building $<"
+	@echo " CC building $<"
 	@$(CC) $(CFLAGS) -c $< -o $@
 
 archive:
@@ -76,5 +85,5 @@ archive:
 		--output=limpid-$$(git describe).tar master
 	@tar -f limpid-$$(git describe).tar --delete limpid/.gitignore
 
-.PHONY: all clean
+.PHONY: all clean archive install example liblimpid
 

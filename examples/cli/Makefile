@@ -30,18 +30,18 @@ LDFLAGS = -pthread -L$(ROOT_DIR)/lib -llimpid
 all: app prompt
 
 app: sample_app.o
-	@echo "$(CC): linking $@..."
+	@echo " CC linking  examples/cli/$@"
 	@$(CC) -o $@ $^ $(LDFLAGS)
 
 prompt: client.o
-	@echo "$(CC): linking $@..."
+	@echo " CC linking  examples/cli/$@"
 	@$(CC) -o $@ $^ $(LDFLAGS)
 
 clean:
 	@rm -rf *.o app prompt
 
 %.o: %.c
-	@echo "$(CC): building $<..."
+	@echo " CC building examples/cli/$<"
 	@$(CC) $(CFLAGS) -c $< -o $@
 
 .PHONY: all app prompt clean
