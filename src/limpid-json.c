@@ -49,13 +49,11 @@ int limpid_process_json_cmd(lchunk_t *cmd, lchunk_t **resp)
 
 	if (resp) *resp = NULL;
 
-	resp_str = new_string(512);
 	string_t *s = new_string3(cmd->length, (char *)cmd->data, cmd->length);
 	json_t *json = json_parse(s);
 	if (json == NULL) {
-		printf("json-proc failed at parse! %s\n", s->arr);
+		printf("json parse error: len:%d str:%s\n", s->len, s->arr);
 		free(s);
-		free(resp_str);
 		return -1;
 	}
 
@@ -63,16 +61,20 @@ int limpid_process_json_cmd(lchunk_t *cmd, lchunk_t **resp)
 		if (strcmp(cmd->trigger, limpid_json_cmd[i]->trigger) == 0)
 			break;
 	}
+
 	if (i < limpid_num_json_cmds) {
+		resp_str = new_string(512);
 		json_start(resp_str);
 		json_printf(resp_str, "command", "%s", cmd->trigger);
-		limpid_json_cmd[i]->cmd_handler(json, resp_str);
+		ret = limpid_json_cmd[i]->cmd_handler(json, resp_str);
 		json_end(resp_str);
 		*resp = limpid_make_chunk(LENC_TYPE(LHANDLE_JSON, TYPE_RESPONSE),
 				cmd->trigger, resp_str->arr, resp_str->len);
-		ret = 0;
+		free(resp_str);
 	}
-	free(resp_str);
+
+	free(s);
+	json_free(json);
 	return ret;
 }
 
@@ -109,18 +111,16 @@ int limpid_send_json_cmd(string_t *json, string_t **resp)
 	char trigger[128];
 	int ret = 1;
 	string_t *value;
-
-	limpid_t *ctx = limpid_connnect("/tmp/limpid-server");
+	limpid_t *ctx;
+	lchunk_t *c;
 
 	if (json_find(json, "command", &value)) {
 		fprintf(stderr, "limpid: unable to find key command in json\n");
-		limpid_disconnect(ctx);
 		return -1;
 	}
 
 	if (value->len >= 128) {
 		fprintf(stderr, "limpid: key command value exceeds 128 bytes\n");
-		limpid_disconnect(ctx);
 		return -1;
 	}
 
@@ -128,26 +128,30 @@ int limpid_send_json_cmd(string_t *json, string_t **resp)
 	trigger[value->len] = 0;
 	free(value);
 
-	lchunk_t *c = limpid_make_chunk(LENC_TYPE(LHANDLE_JSON, TYPE_COMMAND),
-			trigger, json, json ? json->len : 0);
+	ctx = limpid_connnect("/tmp/limpid-server");
+	c = limpid_make_chunk(LENC_TYPE(LHANDLE_JSON, TYPE_COMMAND),
+			trigger, json->arr, json->len);
 
 	if (limpid_send(ctx, c) < 0) {
 		fprintf(stderr, "Failed to send command to server.\n");
 		exit(EXIT_FAILURE);
 	}
 
+	if (limpid_receive(ctx, &c)) {
+		fprintf(stderr, "Failed to receive response.\n");
+		exit(EXIT_FAILURE);
+	}
+
 	do {
-		if (resp == NULL) break;
-
-		if (limpid_receive(ctx, &c)) {
-			fprintf(stderr, "Failed to receive response.\n");
-			break;
-		}
-
-		if (c->length == 0) {
+		if (c->status < 0) {
 			fprintf(stderr, "limpid: unknown command '%s'\n", trigger);
 			break;
 		}
+
+		if (c->length == 0) // AND status >= 0, so it's a command format error.
+			break;      // expect the cmd_handler to have printed something.
+
+		if (resp == NULL) break;
 
 		*resp = new_string3(c->length, (char *)c->data, c->length);
 		if (*resp == NULL) {

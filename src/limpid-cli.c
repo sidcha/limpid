@@ -93,9 +93,8 @@ int limpid_process_cli_cmd(lchunk_t *cmd, lchunk_t **resp)
 	argv = parse_args(cmd_buf, &argc);
 
 	for (i=0; i<limpid_num_cli_cmds; i++) {
-		if (strcmp(cmd->trigger, limpid_cli_cmd[i]->trigger) != 0)
-			continue;
-		break;
+		if (strcmp(cmd->trigger, limpid_cli_cmd[i]->trigger) == 0)
+			break;
 	}
 
 	if (i >= limpid_num_cli_cmds)
@@ -170,7 +169,7 @@ int limpid_read_cli_cmd(const char *prompt, char **trigger, char **args)
 		tmp[j] = 0;
 
 		if (strcmp(tmp, "exit") == 0) {
-			ret = 1;
+			ret = -1;
 			break;
 		}
 
@@ -206,8 +205,6 @@ int limpid_send_cli_cmd(char *trigger, char*args, char **resp)
 	}
 
 	do {
-		if (resp == NULL) break;
-
 		if (c->status < 0) {
 			fprintf(stderr, "limpid: unknown command '%s'\n", trigger);
 			break;
@@ -215,6 +212,8 @@ int limpid_send_cli_cmd(char *trigger, char*args, char **resp)
 
 		if (c->length == 0) // AND status >= 0, so it's a command format error.
 			break;      // expect the cmd_handler to have printed something.
+
+		if (resp == NULL) break;
 
 		*resp = malloc(sizeof(char) * (c->length + 1));
 		if (*resp == NULL) {

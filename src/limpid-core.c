@@ -185,15 +185,15 @@ limpid_t *limpid_connnect(const char *path)
 
 int limpid_send(limpid_t *ctx, lchunk_t *c)
 {
-	int ret, fd, len;
+	int fd, len;
 
 	assert(ctx);
 	assert(c);
 
 	len = sizeof(lchunk_t) + c->length;
 	fd = (ctx->type == LIMPID_SERVER) ? ctx->client_fd : ctx->fd;
-	if ((ret = write(fd, c, len)) < 0) {
-		say("Error at write");
+	if (write(fd, c, len) != len) {
+		say("Error, unable to send data\n");
 		return -1;
 	}
 
@@ -226,6 +226,11 @@ int limpid_receive(limpid_t *ctx, lchunk_t **c)
 		}
 	} while (read1 != read2);
 
+	if (read1 < sizeof(lchunk_t)) {
+		say("Recveived deficit of lchunk\n");
+		return -1;
+	}
+
 	void *read_data = malloc(read1);
 	if (read_data == NULL) {
 		say("Alloc error!\n");
@@ -234,9 +239,18 @@ int limpid_receive(limpid_t *ctx, lchunk_t **c)
 
 	if ((read(fd, read_data, read1)) < 0) {
 		say("Error at read\n");
+		free(read_data);
 		return -1;
 	}
+
 	*c = (lchunk_t *) read_data;
+
+	if ((sizeof(lchunk_t) + (*c)->length) != read1) {
+		say("Invalid data\n");
+		free(read_data);
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -278,4 +292,3 @@ void limpid_register(lhandle_t *h)
 		break;
 	}
 }
-

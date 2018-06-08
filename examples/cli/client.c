@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 	while (1) {
 		ret = limpid_read_cli_cmd("[limpid]$ ", &trigger, &args);
 		if (ret == 0) continue;
-		if (ret == 1 || ret == -1) break;
+		if (ret == -1) break;
 
 		if (limpid_send_cli_cmd(trigger, args, &resp) == 0) {
 			printf("%s\n", resp);
