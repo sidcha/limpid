@@ -38,10 +38,8 @@ int main(int argc, char *argv[])
 
 	cmd = new_string_const("{ 'command': 'ping', 'arg0': 'value0' }");
 
-	if (limpid_send_json_cmd(cmd, &resp)) {
-		printf("Failed to send command\n");
+	if (limpid_send_json_cmd(cmd, &resp))
 		return -1;
-	}
 
 	printf("Response: \n");
 	json_pprint(resp);
