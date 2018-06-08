@@ -24,16 +24,14 @@
 #   Date   : Thu Oct 19 06:02:01 IST 2017
 # 
 
-MAJOR_NUMBER = 0
-MINOR_NUMBER = 2
 
-VERSION  := v$(MAJOR_NUMBER).$(MINOR_NUMBER)
+VERSION  := $(shell git tag --merged master | tail -1 | sed -e s/v//)
 ROOT_DIR := $(shell pwd)
 
 CC       := $(CROSS_COMPILE)gcc
 AR       := $(CROSS_COMPILE)ar
 
-CFLAGS   = -Wall -Iinclude -DVERSION="$(VERSION)" $(ENV_CFLAGS) -g3 -O3
+CFLAGS   = -Wall -Iinclude -DVERSION="v$(VERSION)" $(ENV_CFLAGS) -g3 -O3
 LDFLAGS  = -pthread -Llib -llimpid
 PREFIX  ?= /usr
 
@@ -47,7 +45,7 @@ all: info liblimpid example
 
 info:
 	@echo
-	@echo " VERSION = $(MAJOR_NUMBER).$(MINOR_NUMBER)"
+	@echo " VERSION = $(VERSION)"
 	@echo " CC      = $(CC)"
 	@echo " AR      = $(AR)"
 	@echo " CFLAGS  = $(CFLAGS)"
