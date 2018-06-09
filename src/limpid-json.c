@@ -130,7 +130,8 @@ int limpid_send_json_cmd(string_t *json, string_t **resp)
 	limpid_t *ctx;
 	lchunk_t *c;
 
-	ctx = limpid_connnect("/tmp/limpid-server");
+	ctx = limpid_connnect();
+
 	c = limpid_make_chunk(LENC_TYPE(LHANDLE_JSON, TYPE_COMMAND),
 			json->arr, json->len);
 

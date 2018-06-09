@@ -223,7 +223,7 @@ int limpid_send_cli_cmd(char *trigger, char*args, char **resp)
 			s, sizeof(struct cli_chunk_s) + args_len);
 	free(s);
 
-	ctx = limpid_connnect("/tmp/limpid-server");
+	ctx = limpid_connnect();
 
 	if (limpid_send(ctx, c) < 0) {
 		fprintf(stderr, "Failed to send command to server.\n");
@@ -241,8 +241,12 @@ int limpid_send_cli_cmd(char *trigger, char*args, char **resp)
 			break;
 		}
 
-		if (c->length == 0) // AND status >= 0, so it's a command format error.
-			break;      // expect the cmd_handler to have printed something.
+		if (c->length == 0) {
+			// c->length == 0 AND status >= 0, so it's a command.
+			// format error expect the cmd_handler to have printed
+			// something.
+			break;
+		}
 
 		if (resp == NULL) break;
 

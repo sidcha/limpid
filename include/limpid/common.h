@@ -44,6 +44,7 @@ char *read_line(const char *prompt);
 typedef enum {
 	LHANDLE_CLI,
 	LHANDLE_JSON,
+	LHANDLE_BINARY,
 	LHANDLE_SENTINEL
 } lhandle_type_t;
 

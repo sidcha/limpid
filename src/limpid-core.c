@@ -32,16 +32,24 @@
 #include <stdint.h>
 #include <string.h>
 #include <assert.h>
-
 #include <unistd.h>
 #include <errno.h>
 #include <pthread.h>
-#include <sys/types.h>
-#include <sys/un.h>
-#include <sys/socket.h>
 #include <sys/ioctl.h>
 
 #include <limpid/core.h>
+
+#ifdef LIMPID_USE_UNIX_SOCKETS
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/un.h>
+#endif
+
+#ifdef LIMPID_USE_TCP_SOCKETS
+#include <sys/socket.h>
+#include <netinet/in.h>
+#endif
+
 
 #define is_char(x) (((x) >= 'A' && (x) <= 'Z') || ((x) >= 'a' && (x) <='z'))
 #define to_lower(x) do { if (is_char(x)) { x |= 0x20 } } while(0)
@@ -64,38 +72,90 @@ processor_t processor[LHANDLE_SENTINEL] = {
 void say(const char *fmt, ...)
 {
 	va_list arg;
-	fprintf(stderr, "Limpid: ");
+	fprintf(stderr, "limpid: ");
 	va_start(arg, fmt);
 	vfprintf(stderr, fmt, arg);
 	va_end(arg);
 }
 
+#ifdef LIMPID_USE_UNIX_SOCKETS
+int limpid_create_unix_socket(limpid_t *ctx)
+{
+	socklen_t len;
+	struct sockaddr_un sock_serv;
+
+	if ((ctx->fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+		say("failed to open socket\n");
+		return -1;
+	}
+
+	sock_serv.sun_family = AF_UNIX;
+	strcpy(sock_serv.sun_path, LIMPID_SERVER_PATH);
+	unlink(LIMPID_SERVER_PATH);
+	len = sizeof(sock_serv.sun_family) + strlen(LIMPID_SERVER_PATH);
+
+	if (bind(ctx->fd, (const struct sockaddr *)&sock_serv, len) < 0) {
+		say("failed at bind!\n");
+		return -1;
+	}
+
+	if (listen(ctx->fd, 5) < 0) {
+		say("failed at listen!\n");
+		return -1;
+	}
+
+	return 0;
+}
+#endif
+
+#ifdef LIMPID_USE_TCP_SOCKETS
+int limpid_create_tcp_socket(limpid_t *ctx)
+{
+	struct sockaddr_in sock_serv;
+
+	if ((ctx->fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+		say("failed to open socket\n");
+		return -1;
+	}
+
+	bzero((char *)&sock_serv, sizeof(sock_serv));
+	sock_serv.sin_family = AF_INET;
+	sock_serv.sin_addr.s_addr = INADDR_ANY;
+	sock_serv.sin_port = htons(LIMPID_SERVER_PORT);
+
+	if (bind(ctx->fd, (struct sockaddr *)&sock_serv, sizeof(sock_serv)) < 0) {
+		say("failed to bind to port %d\n", LIMPID_SERVER_PORT);
+		return -1;
+	}
+
+	if (listen(ctx->fd, 5) < 0) {
+		say("failed at listen!\n");
+		return -1;
+	}
+
+	return 0;
+}
+#endif
+
 static void *limpid_listener(void *arg)
 {
 	int hnd, ret=-1;
-	struct sockaddr_un sock_serv, cli_addr;
+	lchunk_t *cmd, *resp;
+	socklen_t len;
 
 	assert(arg);
 
 	limpid_t *ctx = (limpid_t *) arg;
-	if ((ctx->fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-		say("failed to created server fd\n");
-		return NULL;
-	}
 
-	sock_serv.sun_family = AF_UNIX;
-	strcpy(sock_serv.sun_path, ctx->path);
-	unlink(ctx->path);
-	socklen_t len = sizeof(sock_serv.sun_family) + strlen(ctx->path);
-
-	if (bind(ctx->fd, (const struct sockaddr *)&sock_serv, len) < 0) {
-		say("failed at bind!\n");
-		return NULL;
-	}
-	if (listen(ctx->fd, 5) < 0) {
-		say("failed at listen!\n");
-		return NULL;
-	}
+#ifdef LIMPID_USE_UNIX_SOCKETS
+	struct sockaddr_un cli_addr;
+	if (limpid_create_unix_socket(ctx))
+		exit(EXIT_FAILURE);
+#else
+	struct sockaddr_in cli_addr;
+	if (limpid_create_tcp_socket(ctx))
+		exit(EXIT_FAILURE);
+#endif
 	while (1) {
 		ctx->client_fd = accept(ctx->fd, (struct sockaddr *)&cli_addr, &len);
 		if (ctx->client_fd < 0) {
@@ -103,7 +163,7 @@ static void *limpid_listener(void *arg)
 			continue;
 		}
 		//printf("limpid: accepted connection from a clinet\n");
-		lchunk_t *cmd=NULL, *resp=NULL;
+		cmd=NULL; resp=NULL;
 		if (limpid_receive(ctx, &cmd)) {
 			say("server - receive failed\n");
 			close(ctx->client_fd);
@@ -124,9 +184,10 @@ static void *limpid_listener(void *arg)
 		}
 		resp->status = ret;
 		if (limpid_send(ctx, resp)) {
-			/* send failed, the client may be stuck endlessly waiting for 
-			 * this data. We can do nothing but to close the connetion now
-			 * and trigger a SIGPIPE and expect the other side to catch it.
+			/* send failed, the client may be stuck endlessly 
+			 * waiting for this data. We can do nothing but to close
+			 * the connetion now and trigger a SIGPIPE and expect
+			 * the other side to catch it.
 			 */
 			say("server - send failed\n");
 			free(resp);
@@ -134,6 +195,8 @@ static void *limpid_listener(void *arg)
 		close(ctx->client_fd);
 		//printf("limpid: closed connection to client\n");
 	}
+
+	// Will never reach this point.
 	return NULL;
 }
 
@@ -143,43 +206,48 @@ int limpid_server_init(const char *path)
 	assert(ctx);
 
 	ctx->type = LIMPID_SERVER;
-	ctx->path = strdup(path);
 	pthread_t server_thread;
 	pthread_create(&server_thread, NULL, limpid_listener, (void *)ctx);
 	return 0;
 }
 
-// Client side
-
-limpid_t *limpid_connnect(const char *path)
+limpid_t *limpid_connnect()
 {
-	socklen_t sock_len;
-	struct sockaddr_un serv_addr;
-
-	limpid_t *ctx = malloc(sizeof(limpid_t));
-
-	assert(ctx);
-	assert(path);
-
+	limpid_t *ctx;
+	
+	if ((ctx = malloc(sizeof(limpid_t))) == NULL) {
+		perror("limpid: client at alloc");
+		exit(EXIT_FAILURE);
+	}
 	ctx->type = LIMPID_CLIENT;
-	ctx->path = NULL;
 
+#ifdef LIMPID_USE_UNIX_SOCKETS
+	struct sockaddr_un serv_addr;
 	if ((ctx->fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
 		free(ctx);
 		return NULL;
 	}
 
 	serv_addr.sun_family = AF_UNIX;
-	strcpy(serv_addr.sun_path, path);
-
-	sock_len = sizeof(serv_addr.sun_family) + strlen(serv_addr.sun_path);
-	if (connect(ctx->fd, (const struct sockaddr *)&serv_addr, sock_len) != 0) {
-		fprintf(stderr, "limpid: failed to connect to server\n");
-		close(ctx->fd);
-		free(ctx);
+	strcpy(serv_addr.sun_path, LIMPID_SERVER_PATH);
+	socklen_t sock_len = sizeof(serv_addr.sun_family) + 
+					strlen(serv_addr.sun_path);
+#else
+	struct sockaddr_in serv_addr;
+	if ((ctx->fd = socket(AF_INET , SOCK_STREAM , 0)) == -1) {
+		perror("limpid: Failed at socket");
 		exit(EXIT_FAILURE);
 	}
-	ctx->path = strdup(path);
+	serv_addr.sin_addr.s_addr = INADDR_ANY;
+	serv_addr.sin_family = AF_INET;
+	serv_addr.sin_port = htons(LIMPID_SERVER_PORT);
+	socklen_t sock_len = sizeof(serv_addr);
+#endif
+
+	if (connect(ctx->fd, (struct sockaddr *)&serv_addr, sock_len) != 0) {
+		perror("limpid: failed at connect");
+		exit(EXIT_FAILURE);
+	}
 	return ctx;
 }
 
@@ -279,8 +347,6 @@ int limpid_receive(limpid_t *ctx, lchunk_t **chunk)
 void limpid_disconnect(limpid_t *ctx)
 {
 	close(ctx->fd);
-	if (ctx->path)
-		free(ctx->path);
 	free(ctx);
 }
 

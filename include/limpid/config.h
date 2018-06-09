@@ -29,9 +29,20 @@
 #ifndef _LIMPID_CONFIG_H
 #define _LIMPID_CONFIG_H
 
+#if !defined(LIMPID_USE_TCP_SOCKETS) && !defined(LIMPID_USE_UNIX_SOCKETS)
+  #define LIMPID_USE_TCP_SOCKETS
+#endif
+
+#ifdef LIMPID_USE_UNIX_SOCKETS
+  #define LIMPID_SERVER_PATH       "/tmp/limpid-server"
+#endif
+
+#ifdef LIMPID_USE_TCP_SOCKETS
+  #define LIMPID_SERVER_PORT       3858
+#endif
+
 #define LIMPID_API_VERSION         1
 #define LIMPID_MAGIC               0x48
-#define LIMPID_SERVER_PATH         "/tmp/limpid-server"
 #define LIMPID_MAX_COMMANDS        128
 #define LIMPID_READ_LINE_MAXLEN    128
 

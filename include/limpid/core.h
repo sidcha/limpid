@@ -44,7 +44,6 @@ typedef struct {
 	int type;       // see below
 	int fd;         // client or server fd
 	int client_fd;  // write-to-fd for server
-	char *path;     // path to socket.
 } limpid_t;
 
 #define LENC_TYPE(x,y)     (x | (y << 8))
@@ -58,14 +57,14 @@ typedef struct {
 typedef struct {
 	uint8_t version;
 	uint8_t type;
-	uint8_t status;
 	uint8_t magic;
+	int8_t status;
 	uint8_t checksum;
 	uint32_t length;
 	uint8_t data[0];
 } lchunk_t;
 
-limpid_t *limpid_connnect(const char *path);
+limpid_t *limpid_connnect();
 void limpid_disconnect(limpid_t *ctx);
 
 lchunk_t *limpid_make_chunk(int type, void *data, int len);
