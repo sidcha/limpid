@@ -24,8 +24,10 @@
 #   Date   : Thu Oct 19 06:02:01 IST 2017
 # 
 
+-include version.mk
 
-VERSION  := $(shell git tag --merged master | tail -1 | sed -e s/v//)
+VERSION  ?= $(shell git tag --merged master | tail -1 | sed -e s/v//)
+VERSION  := $(VERSION)  # flatten version so its not executed again and again
 ROOT_DIR := $(shell pwd)
 
 CC       := $(CROSS_COMPILE)gcc
@@ -82,6 +84,9 @@ archive:
 	@git archive --format=tar --prefix=limpid/ \
 		--output=limpid-$$(git describe).tar master
 	@tar -f limpid-$$(git describe).tar --delete limpid/.gitignore
+	@echo "VERSION = $(VERSION)" > version.mk
+	@tar -rvf limpid-$$(git describe).tar --transform="s|^|limpid/|" version.mk
+	@rm version.mk
 
 .PHONY: all clean archive install example liblimpid
 
