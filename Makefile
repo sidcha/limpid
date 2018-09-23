@@ -63,7 +63,7 @@ example:
 clean:
 	@make -s -C examples/cli clean
 	@make -s -C examples/json clean
-	@rm -rf lib/* obj/ *.tar py-lumpid/build/
+	@rm -rf lib/* obj/ *.tar py-limpid/build/
 
 install:
 	@mkdir -p $(PREFIX)/lib/ $(PREFIX)/include/
