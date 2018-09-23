@@ -48,6 +48,7 @@ int main(int argc, char *argv[])
 
 		free(trigger);
 		if (args) free(args);
+		free(resp);
 	}
 
 	return ret;
