@@ -1,16 +1,16 @@
-# 
+#
 #                 Copyright (c) 2017 Siddharth Chandrasekaran
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
 # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -18,11 +18,11 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-# 
+#
 #   Author : Siddharth Chandrasekaran
 #   Email  : siddharth@embedjournal.com
 #   Date   : Thu Oct 19 06:02:01 IST 2017
-# 
+#
 
 -include version.mk
 
@@ -63,7 +63,7 @@ example:
 clean:
 	@make -s -C examples/cli clean
 	@make -s -C examples/json clean
-	@rm -rf lib/* obj/ *.tar
+	@rm -rf lib/* obj/ *.tar py-lumpid/build/
 
 install:
 	@mkdir -p $(PREFIX)/lib/ $(PREFIX)/include/
@@ -79,6 +79,10 @@ obj/%.o: src/%.c
 	@test -d $@ || mkdir -p $(dir $@)
 	@echo " CC building $<"
 	@$(CC) $(CFLAGS) -c $< -o $@
+
+py-ext:
+	@cd py-limpid && python setup.py build
+	@cd py-limpid && sudo python setup.py install
 
 archive:
 	@git archive --format=tar --prefix=limpid/ \

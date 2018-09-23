@@ -3,9 +3,11 @@
 *.out
 *.tar
 
+.tags
 tags
 core
 
+build/
 loc/
 obj/
 
