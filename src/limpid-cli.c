@@ -256,7 +256,7 @@ int limpid_send_cli_cmd(char *trigger, char*args, char **resp)
 			exit(EXIT_FAILURE);
 		}
 		memcpy(*resp, c->data, c->length);
-		*(resp + c->length) = 0;
+		*(*resp + c->length) = 0;
 		ret = 0;
 	} while(0);
 
