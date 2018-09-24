@@ -246,7 +246,7 @@ limpid_t *limpid_connect()
 #endif
 
 	if (connect(ctx->fd, (struct sockaddr *)&serv_addr, sock_len) != 0) {
-		perror("limpid: failed at connect");
+		//perror("limpid: failed at connect");
 		free(ctx);
 		return NULL;
 	}
