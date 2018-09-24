@@ -64,7 +64,7 @@ typedef struct {
 	uint8_t data[0];
 } lchunk_t;
 
-limpid_t *limpid_connnect();
+limpid_t *limpid_connect();
 void limpid_disconnect(limpid_t *ctx);
 
 lchunk_t *limpid_make_chunk(int type, void *data, int len);

@@ -45,7 +45,7 @@ struct limpid_json_cmd_s *limpid_json_cmd[LIMPID_MAX_COMMANDS];
 int limpid_process_json_cmd(lchunk_t *cmd, lchunk_t **resp)
 {
 	char trigger[128];
-	string_t *resp_str;	
+	string_t *resp_str;
 	int ret=-1, i;
 
 	if (resp) *resp = NULL;
@@ -130,7 +130,9 @@ int limpid_send_json_cmd(string_t *json, string_t **resp)
 	limpid_t *ctx;
 	lchunk_t *c;
 
-	ctx = limpid_connnect();
+	ctx = limpid_connect();
+	if (ctx == NULL)
+		return -1;
 
 	c = limpid_make_chunk(LENC_TYPE(LHANDLE_JSON, TYPE_COMMAND),
 			json->arr, json->len);

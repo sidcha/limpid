@@ -184,7 +184,7 @@ static void *limpid_listener(void *arg)
 		}
 		resp->status = ret;
 		if (limpid_send(ctx, resp)) {
-			/* send failed, the client may be stuck endlessly 
+			/* send failed, the client may be stuck endlessly
 			 * waiting for this data. We can do nothing but to close
 			 * the connetion now and trigger a SIGPIPE and expect
 			 * the other side to catch it.
@@ -211,13 +211,13 @@ int limpid_server_init(const char *path)
 	return 0;
 }
 
-limpid_t *limpid_connnect()
+limpid_t *limpid_connect()
 {
 	limpid_t *ctx;
-	
+
 	if ((ctx = malloc(sizeof(limpid_t))) == NULL) {
 		perror("limpid: client at alloc");
-		exit(EXIT_FAILURE);
+		return NULL;
 	}
 	ctx->type = LIMPID_CLIENT;
 
@@ -230,13 +230,14 @@ limpid_t *limpid_connnect()
 
 	serv_addr.sun_family = AF_UNIX;
 	strcpy(serv_addr.sun_path, LIMPID_SERVER_PATH);
-	socklen_t sock_len = sizeof(serv_addr.sun_family) + 
+	socklen_t sock_len = sizeof(serv_addr.sun_family) +
 					strlen(serv_addr.sun_path);
 #else
 	struct sockaddr_in serv_addr;
 	if ((ctx->fd = socket(AF_INET , SOCK_STREAM , 0)) == -1) {
 		perror("limpid: Failed at socket");
-		exit(EXIT_FAILURE);
+		free(ctx);
+		return NULL;
 	}
 	serv_addr.sin_addr.s_addr = INADDR_ANY;
 	serv_addr.sin_family = AF_INET;
@@ -246,7 +247,8 @@ limpid_t *limpid_connnect()
 
 	if (connect(ctx->fd, (struct sockaddr *)&serv_addr, sock_len) != 0) {
 		perror("limpid: failed at connect");
-		exit(EXIT_FAILURE);
+		free(ctx);
+		return NULL;
 	}
 	return ctx;
 }
@@ -317,7 +319,7 @@ int limpid_receive(limpid_t *ctx, lchunk_t **chunk)
 		free(read_data);
 		return -1;
 	}
-	
+
 	c = (lchunk_t *) read_data;
 	checksum = c->checksum;
 	c->checksum = 0;

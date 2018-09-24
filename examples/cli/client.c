@@ -44,11 +44,11 @@ int main(int argc, char *argv[])
 
 		if (limpid_send_cli_cmd(trigger, args, &resp) == 0) {
 			printf("%s\n", resp);
+			free(resp);
 		}
 
 		free(trigger);
 		if (args) free(args);
-		free(resp);
 	}
 
 	return ret;

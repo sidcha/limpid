@@ -207,6 +207,8 @@ int limpid_send_cli_cmd(char *trigger, char*args, char **resp)
 	limpid_t *ctx;
 	lchunk_t *c;
 
+	if (resp) *resp = NULL;
+
 	args_len = args ? strlen(args): 0;
 	s = malloc(sizeof(struct cli_chunk_s) + args_len);
 	if (s == NULL) {
@@ -223,7 +225,9 @@ int limpid_send_cli_cmd(char *trigger, char*args, char **resp)
 			s, sizeof(struct cli_chunk_s) + args_len);
 	free(s);
 
-	ctx = limpid_connnect();
+	ctx = limpid_connect();
+	if (ctx == NULL)
+		return -1;
 
 	if (limpid_send(ctx, c) < 0) {
 		fprintf(stderr, "Failed to send command to server.\n");
@@ -253,14 +257,15 @@ int limpid_send_cli_cmd(char *trigger, char*args, char **resp)
 		*resp = malloc(sizeof(char) * (c->length + 1));
 		if (*resp == NULL) {
 			fprintf(stderr, "Failed at malloc\n");
-			exit(EXIT_FAILURE);
+			break;
 		}
 		memcpy(*resp, c->data, c->length);
 		*(*resp + c->length) = 0;
 		ret = 0;
 	} while(0);
 
-	free(c);
+	if (c && ret == 0)
+		free(c);
 	limpid_disconnect(ctx);
 
 	return ret;
