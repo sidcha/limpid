@@ -11,6 +11,6 @@ insert_final_newline = true
 trim_trailing_whitespace = true
 
 [*.{py,md}]
-indent_size = 3
+indent_size = 4
 indent_style = space
 

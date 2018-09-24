@@ -10,6 +10,14 @@ source_list = [
     '../src/limpid-cli.c'
 ]
 
-setup(name='limpid',
-      version='1.0',
-      ext_modules=[Extension('limpid', source_list, extra_compile_args=[ '-I../include' ])])
+ext = Extension(
+    'limpid',
+    source_list,
+    extra_compile_args=[ '-I../include' ]
+)
+
+setup(
+    name='limpid',
+    version='1.0',
+    ext_modules=[ext]
+)
