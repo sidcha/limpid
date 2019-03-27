@@ -33,13 +33,13 @@
 #include <limpid/lib-json.h>
 #include <limpid/lib-string.h>
 
-#define LIMPID_REG_JSON(x,y)	\
-({				\
-	lhandle_t h;		\
-	h.type=LHANDLE_JSON;	\
-	h.trigger=x;		\
-	h.json_handle=y;	\
-	limpid_register(&h);	\
+#define LIMPID_REG_JSON(x,y)        \
+({                                  \
+    lhandle_t h;                    \
+    h.type=LHANDLE_JSON;            \
+    h.trigger=x;                    \
+    h.json_handle=y;                \
+    limpid_register(&h);            \
 })
 
 int limpid_send_json_cmd(string_t *cmd, string_t **resp);

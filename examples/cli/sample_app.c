@@ -33,36 +33,36 @@
 
 int cmd_ping(int argc, char *argv[], string_t **resp)
 {
-	int i;
-	string_t *s = new_string(128);
+    int i;
+    string_t *s = new_string(128);
 
-	string_printf(s, "a", "pong"); // "a":apend; anything else, repleace.
+    string_printf(s, "a", "pong"); // "a":apend; anything else, repleace.
 
-	for (i=0; i<argc; i++) {
-		string_printf(s, "a", "\n[%d] %s", i, argv[i]);
-	}
+    for (i=0; i<argc; i++) {
+        string_printf(s, "a", "\n[%d] %s", i, argv[i]);
+    }
 
-	*resp = s;
-	return 0;
+    *resp = s;
+    return 0;
 }
 
 int cmd_do_fluff(int argc, char *argv[], string_t **resp)
 {
-	printf("Server got the fluff command.\n");
-	return 0;
+    printf("Server got the fluff command.\n");
+    return 0;
 }
 
 int main(int argc, char *argv[])
 {
-	limpid_server_init("/tmp/limpid-server");
+    limpid_server_init("/tmp/limpid-server");
 
-	LIMPID_REG_CLI("ping", cmd_ping);
-	LIMPID_REG_CLI("fluff", cmd_do_fluff);
+    LIMPID_REG_CLI("ping", cmd_ping);
+    LIMPID_REG_CLI("fluff", cmd_do_fluff);
 
-	while (1) {
-		// Your application code!
-	}
+    while (1) {
+        // Your application code!
+    }
 
-	return 0;
+    return 0;
 }
 

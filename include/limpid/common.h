@@ -42,19 +42,19 @@ char *read_line(const char *prompt);
 /* --- from src/limpid-core.c ---------------------------------------------- */
 
 typedef enum {
-	LHANDLE_CLI,
-	LHANDLE_JSON,
-	LHANDLE_BINARY,
-	LHANDLE_SENTINEL
+    LHANDLE_CLI,
+    LHANDLE_JSON,
+    LHANDLE_BINARY,
+    LHANDLE_SENTINEL
 } lhandle_type_t;
 
 typedef struct {
-	lhandle_type_t type;
-	const char *trigger;
-	union {
-		int (*cli_handle)(int, char **, string_t **);
-		int (*json_handle)(json_t *, string_t *);
-	};
+    lhandle_type_t type;
+    const char *trigger;
+    union {
+        int (*cli_handle)(int, char **, string_t **);
+        int (*json_handle)(json_t *, string_t *);
+    };
 } lhandle_t;
 
 void limpid_register(lhandle_t *h);

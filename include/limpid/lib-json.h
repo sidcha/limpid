@@ -32,16 +32,16 @@
 #include <limpid/lib-string.h>
 
 typedef struct {
-	int kofs;
-	int klen;
-	int vofs;
-	int vlen;
+    int kofs;
+    int klen;
+    int vofs;
+    int vlen;
 } jsontok_t;
 
 typedef struct {
-	int num_keys;
-	string_t *json_str;
-	jsontok_t *toks;
+    int num_keys;
+    string_t *json_str;
+    jsontok_t *toks;
 } json_t;
 
 json_t *json_parse(string_t *json_str);

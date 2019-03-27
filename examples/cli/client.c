@@ -34,23 +34,23 @@
 
 int main(int argc, char *argv[])
 {
-	int ret;
-	char *trigger, *args, *resp;
+    int ret;
+    char *trigger, *args, *resp;
 
-	while (1) {
-		ret = limpid_read_cli_cmd("[limpid]$ ", &trigger, &args);
-		if (ret == 0) continue;
-		if (ret == -1) break;
+    while (1) {
+        ret = limpid_read_cli_cmd("[limpid]$ ", &trigger, &args);
+        if (ret == 0) continue;
+        if (ret == -1) break;
 
-		if (limpid_send_cli_cmd(trigger, args, &resp) == 0) {
-			printf("%s\n", resp);
-			free(resp);
-		}
+        if (limpid_send_cli_cmd(trigger, args, &resp) == 0) {
+            printf("%s\n", resp);
+            free(resp);
+        }
 
-		free(trigger);
-		if (args) free(args);
-	}
+        free(trigger);
+        if (args) free(args);
+    }
 
-	return ret;
+    return ret;
 }
 

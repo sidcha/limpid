@@ -29,23 +29,23 @@
 #ifndef _LIB_STRING_H_
 #define _LIB_STRING_H_
 
-#define CREATE_STRING(x,y)	\
-({				\
-	char x##arr[y];		\
-	string_t x = {		\
-		.arr=x##arr,	\
-		.len=0,		\
-		.max_len=y	\
-	}			\
+#define CREATE_STRING(x,y)       \
+({                               \
+    char x##arr[y];              \
+    string_t x = {               \
+        .arr=x##arr,             \
+        .len=0,                  \
+        .max_len=y               \
+    }                            \
 })
-#define new_string(l)		new_string3(l, NULL, 0)
-#define new_string_const(s)	new_string3(strlen(s), s, strlen(s))
+#define new_string(l)        new_string3(l, NULL, 0)
+#define new_string_const(s)    new_string3(strlen(s), s, strlen(s))
 
 typedef struct {
-	int len;
-	int max_len;
-	int reserved;
-	char arr[0];
+    int len;
+    int max_len;
+    int reserved;
+    char arr[0];
 } string_t;
 
 string_t *new_string3(int len, char *data, int data_len);

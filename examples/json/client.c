@@ -34,18 +34,18 @@
 
 int main(int argc, char *argv[])
 {
-	string_t *cmd, *resp;
+    string_t *cmd, *resp;
 
-	cmd = new_string_const("{ 'command': 'ping', 'arg0': 'value0' }");
+    cmd = new_string_const("{ 'command': 'ping', 'arg0': 'value0' }");
 
-	if (limpid_send_json_cmd(cmd, &resp))
-		return -1;
+    if (limpid_send_json_cmd(cmd, &resp))
+        return -1;
 
-	printf("Response: \n");
-	json_pprint(resp);
+    printf("Response: \n");
+    json_pprint(resp);
 
-	free(cmd);
-	free(resp);
-	return 0;
+    free(cmd);
+    free(resp);
+    return 0;
 }
 

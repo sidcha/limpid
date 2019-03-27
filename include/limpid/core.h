@@ -35,15 +35,15 @@
 #include <limpid/config.h>
 
 enum lchunk_type_e {
-	TYPE_COMMAND,
-	TYPE_RESPONSE,
-	TYPE_COMPLETION,
+    TYPE_COMMAND,
+    TYPE_RESPONSE,
+    TYPE_COMPLETION,
 };
 
 typedef struct {
-	int type;       // see below
-	int fd;         // client or server fd
-	int client_fd;  // write-to-fd for server
+    int type;       // see below
+    int fd;         // client or server fd
+    int client_fd;  // write-to-fd for server
 } limpid_t;
 
 #define LENC_TYPE(x,y)     (x | (y << 8))
@@ -55,13 +55,13 @@ typedef struct {
 #define LIMPID_CLIENT  1
 
 typedef struct {
-	uint8_t version;
-	uint8_t type;
-	uint8_t magic;
-	int8_t status;
-	uint8_t checksum;
-	uint32_t length;
-	uint8_t data[0];
+    uint8_t version;
+    uint8_t type;
+    uint8_t magic;
+    int8_t status;
+    uint8_t checksum;
+    uint32_t length;
+    uint8_t data[0];
 } lchunk_t;
 
 limpid_t *limpid_connect();

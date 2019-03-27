@@ -31,13 +31,13 @@
 
 #include <limpid/common.h>
 
-#define LIMPID_REG_CLI(x,y)	\
-({				\
-	lhandle_t h;		\
-	h.type=LHANDLE_CLI;	\
-	h.trigger=x;		\
-	h.cli_handle=y;		\
-	limpid_register(&h);	\
+#define LIMPID_REG_CLI(x,y)     \
+({                              \
+    lhandle_t h;                \
+    h.type=LHANDLE_CLI;         \
+    h.trigger=x;                \
+    h.cli_handle=y;             \
+    limpid_register(&h);        \
 })
 
 int limpid_read_cli_cmd(const char *prompt, char **trigger, char **args);

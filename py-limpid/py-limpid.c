@@ -31,54 +31,54 @@
 
 static PyObject* limpid_send(PyObject *self, PyObject *args)
 {
-	PyObject *resp;
-	char *limpid_trig, *limpid_args, *limpid_resp;
+    PyObject *resp;
+    char *limpid_trig, *limpid_args, *limpid_resp;
 
-	if (!PyArg_ParseTuple(args, "ss", &limpid_trig, &limpid_args))
-		return NULL;
+    if (!PyArg_ParseTuple(args, "ss", &limpid_trig, &limpid_args))
+        return NULL;
 
-	if (limpid_send_cli_cmd(limpid_trig, limpid_args, &limpid_resp) != 0)
-		Py_RETURN_NONE;
+    if (limpid_send_cli_cmd(limpid_trig, limpid_args, &limpid_resp) != 0)
+        Py_RETURN_NONE;
 
-	resp = Py_BuildValue("s", limpid_resp);
-	free(limpid_resp);
+    resp = Py_BuildValue("s", limpid_resp);
+    free(limpid_resp);
 
-	return resp;
+    return resp;
 }
 
 #if PY_MAJOR_VERSION < 3
 static char limpid_send_docs[] = "limpid.send(String limpid_tigger, String cli_args)\n";
 
 static PyMethodDef limpid_funcs[] = {
-	{"send", (PyCFunction)limpid_send, METH_VARARGS, limpid_send_docs},
-	{NULL}
+    {"send", (PyCFunction)limpid_send, METH_VARARGS, limpid_send_docs},
+    {NULL}
 };
 
 void initlimpid(void)
 {
-	Py_InitModule3("limpid", limpid_funcs, "Limpid CLI python extension!");
+    Py_InitModule3("limpid", limpid_funcs, "Limpid CLI python extension!");
 }
 #else
 static PyMethodDef limpid_methods[] = {
-	{
-		"send",
-		(PyCFunction)limpid_send,
-		METH_VARARGS,
-		"limpid.send(String limpid_tigger, String cli_args)"
-	},
-	{NULL, NULL, 0, NULL} /* sentinel */
+    {
+        "send",
+        (PyCFunction)limpid_send,
+        METH_VARARGS,
+        "limpid.send(String limpid_tigger, String cli_args)"
+    },
+    {NULL, NULL, 0, NULL} /* sentinel */
 };
 
 static struct PyModuleDef limpid_module = {
-	PyModuleDef_HEAD_INIT,
-	"limpid",
-	NULL,
-	-1,
-	limpid_methods
+    PyModuleDef_HEAD_INIT,
+    "limpid",
+    NULL,
+    -1,
+    limpid_methods
 };
 
 PyMODINIT_FUNC PyInit_limpid(void)
 {
-	return PyModule_Create(&limpid_module);
+    return PyModule_Create(&limpid_module);
 }
 #endif

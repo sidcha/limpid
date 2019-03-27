@@ -32,21 +32,21 @@
 
 int cmd_ping(json_t *in_json, string_t *resp)
 {
-	json_printf(resp, "response", "pong");
+    json_printf(resp, "response", "pong");
 
-	return 0;
+    return 0;
 }
 
 int main(int argc, char *argv[])
 {
-	limpid_server_init("/tmp/limpid-server");
+    limpid_server_init("/tmp/limpid-server");
 
-	LIMPID_REG_JSON("ping", cmd_ping);
+    LIMPID_REG_JSON("ping", cmd_ping);
 
-	while (1) {
-		// Your application code!
-	}
+    while (1) {
+        // Your application code!
+    }
 
-	return 0;
+    return 0;
 }
 
