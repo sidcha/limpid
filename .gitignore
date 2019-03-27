@@ -8,8 +8,6 @@ tags
 core
 
 build/
-loc/
-obj/
 
 examples/cli/app
 examples/cli/prompt
