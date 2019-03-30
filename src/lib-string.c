@@ -32,7 +32,8 @@
 #include <string.h>
 
 #include <limpid/common.h>
-#include <limpid/config.h>
+
+#include "private.h"
 
 string_t *new_string3(int len, char *data, int data_len)
 {

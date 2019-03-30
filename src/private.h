@@ -22,33 +22,15 @@
 
     Author : Siddharth Chandrasekaran
     Email  : siddharth@embedjournal.com
-    Date   : Sat May  5 11:36:41 IST 2018
+    Date   : Sat Mar 30 16:57:42 IST 2019
 
 ******************************************************************************/
 
-#ifndef _LIMPID_COMMON_H
-#define _LIMPID_COMMON_H
+#ifndef _PRIVATE_H_
+#define _PRIVATE_H_
 
-#include <limpid/lib-string.h>
-#include <limpid/lib-json.h>
+#include "config.h"
 
-typedef enum {
-    LHANDLE_CLI,
-    LHANDLE_JSON,
-    LHANDLE_BINARY,
-    LHANDLE_SENTINEL
-} lhandle_type_t;
-
-typedef struct {
-    lhandle_type_t type;
-    const char *trigger;
-    union {
-        int (*cli_handle)(int, char **, string_t **);
-        int (*json_handle)(json_t *, string_t *);
-    };
-} lhandle_t;
-
-void limpid_register(lhandle_t *h);
-int limpid_server_init(const char *path);
+#define safe_free(x) do { if(x) free(x); } while(0)
 
 #endif

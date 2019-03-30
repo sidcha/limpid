@@ -32,7 +32,6 @@
 #include <stdint.h>
 
 #include <limpid/common.h>
-#include <limpid/config.h>
 
 enum lchunk_type_e {
     TYPE_COMMAND,

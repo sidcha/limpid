@@ -34,6 +34,8 @@
 
 #include <limpid/common.h>
 
+#include "private.h"
+
 enum {
     JSONP_JSON_START,       //1
 

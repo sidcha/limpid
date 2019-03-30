@@ -33,7 +33,7 @@
 #include <termios.h>
 #include <assert.h>
 
-#include <limpid/config.h>
+#include "private.h"
 
 #define tty_erase_line()       assert(write(1, "\033[K", 3) == 3)
 #define tty_send_newline()     assert(write(1, "\r\n", 2) == 2)

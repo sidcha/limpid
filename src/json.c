@@ -31,8 +31,8 @@
 #include <ctype.h>
 #include <string.h>
 
-#include <limpid/core.h>
-#include <limpid/common.h>
+#include "private.h"
+#include "core.h"
 
 struct limpid_json_cmd_s {
     char *trigger;

@@ -37,7 +37,8 @@
 #include <pthread.h>
 #include <sys/ioctl.h>
 
-#include <limpid/core.h>
+#include "private.h"
+#include "core.h"
 
 #ifdef LIMPID_USE_UNIX_SOCKETS
 #include <sys/socket.h>

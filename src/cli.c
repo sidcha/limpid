@@ -31,7 +31,10 @@
 #include <ctype.h>
 #include <string.h>
 
-#include <limpid/core.h>
+#include "config.h"
+#include "core.h"
+
+char *read_line(const char *prompt);
 
 struct limpid_cli_cmd_s {
     char *trigger;
