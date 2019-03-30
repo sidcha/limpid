@@ -2,12 +2,12 @@ from distutils.core import setup, Extension
 
 source_list = [
     'py-limpid.c',
-    '../src/limpid-core.c',
-    '../src/limpid-json.c',
-    '../src/lib-json.c',
-    '../src/lib-string.c',
-    '../src/lib-read-line.c',
-    '../src/limpid-cli.c'
+    '../helpers/json.c',
+    '../helpers/string.c',
+    '../helpers/read-line.c',
+    '../src/core.c',
+    '../src/json.c',
+    '../src/cli.c'
 ]
 
 ext = Extension(
