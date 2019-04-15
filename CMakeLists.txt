@@ -60,7 +60,7 @@ ADD_LIBRARY(${LIB_LIMPID_NAME} STATIC ${LIB_LIMPID_SRC})
 ## Install binary and other related assets
 set(CMAKE_INSTALL_DIR $ENV{INSTALL_PREFIX})
 install(TARGETS ${LIB_LIMPID_NAME} DESTINATION ${CMAKE_INSTALL_DIR}/lib)
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/limpid DESTINATION ${CMAKE_INSTALL_DIR}/include)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/limpid DESTINATION ${CMAKE_INSTALL_DIR}/include)
 
 ## Example CLI Target
 add_executable(cli_app ${CMAKE_CURRENT_SOURCE_DIR}/examples/cli/sample_app.c)
