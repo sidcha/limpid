@@ -30,8 +30,6 @@ project(limpid)
 set(PROJECT_AUTHOR "Siddharth Chandrasekran")
 set(PROJECT_YEAR 2017)
 
-set(LIB_LIMPID_NAME "limpid")
-
 ## POSIX Thread Library
 find_package(Threads REQUIRED)
 
@@ -47,22 +45,30 @@ set(CMAKE_BUILD_TYPE Release)
 add_c_compiler_flag(-Wall)
 add_c_compiler_flag(-s) # strip target
 
-determine_target_architecture(ARCH)
-
 include_directories($ENV{INSTALL_PREFIX}/include)
 link_directories($ENV{INSTALL_PREFIX}/lib)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+## Example CLI Target
+add_executable(cli_app ${CMAKE_CURRENT_SOURCE_DIR}/cli/sample_app.c)
+target_link_libraries(cli_app PUBLIC limpid)
+target_link_libraries(cli_app PUBLIC ${CMAKE_THREAD_LIBS_INIT})
 
-file(GLOB LIB_LIMPID_SRC RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "src/*.c")
-ADD_LIBRARY(${LIB_LIMPID_NAME} STATIC ${LIB_LIMPID_SRC})
+add_executable(cli_prompt ${CMAKE_CURRENT_SOURCE_DIR}/cli/client.c)
+target_link_libraries(cli_prompt PUBLIC limpid)
+target_link_libraries(cli_prompt PUBLIC ${CMAKE_THREAD_LIBS_INIT})
 
-## Install binary and other related assets
-set(CMAKE_INSTALL_DIR $ENV{INSTALL_PREFIX})
-install(TARGETS ${LIB_LIMPID_NAME} DESTINATION ${CMAKE_INSTALL_DIR}/lib)
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/limpid DESTINATION ${CMAKE_INSTALL_DIR}/include)
+## Example JSON Target
+add_executable(json_app ${CMAKE_CURRENT_SOURCE_DIR}/json/sample_app.c)
+target_link_libraries(json_app PUBLIC limpid)
+target_link_libraries(json_app PUBLIC ${CMAKE_THREAD_LIBS_INIT})
 
-option(OPT_BUILD_EXAMPLES "Build examples" OFF)
-if(OPT_BUILD_EXAMPLES)
-    add_subdirectory(examples)
-endif(OPT_BUILD_EXAMPLES)
+add_executable(json_prompt ${CMAKE_CURRENT_SOURCE_DIR}/json/client.c)
+target_link_libraries(json_prompt PUBLIC limpid)
+target_link_libraries(json_prompt PUBLIC ${CMAKE_THREAD_LIBS_INIT})
+
+set_target_properties(cli_app cli_prompt json_app json_prompt
+    PROPERTIES
+    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+)
