@@ -46,8 +46,16 @@ int cmd_ping(int argc, char *argv[], string_t **resp)
     return 0;
 }
 
+int cmd_fluff_foo(int argc, char *argv[], string_t **resp)
+{
+    printf("Server caught the fluff-foo sub command\n");
+    return 0;
+}
+
 int cmd_do_fluff(int argc, char *argv[], string_t **resp)
 {
+    LIMPID_SUB_CMD("foo", cmd_fluff_foo, resp);
+    LIMPID_SUB_CMD("ping", cmd_ping, resp);
     printf("Server got the fluff command.\n");
     return 0;
 }

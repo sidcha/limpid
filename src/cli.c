@@ -30,11 +30,11 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 
 #include "config.h"
 #include "core.h"
-
-char *read_line(const char *prompt);
 
 struct limpid_cli_cmd_s {
     char *trigger;
@@ -169,8 +169,8 @@ int limpid_read_cli_cmd(const char *prompt, char **trigger, char **args)
         i = 0; j = 0; ret = 0;
         *trigger = NULL; *args = NULL;
 
-        if ((line = read_line(prompt)) == NULL)
-            break;
+        if ((line = readline(prompt)) == NULL)
+            return 0;
 
         if (line && (strlen(line) == 0))
             break;

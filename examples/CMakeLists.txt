@@ -30,16 +30,9 @@ project(limpid)
 set(PROJECT_AUTHOR "Siddharth Chandrasekran")
 set(PROJECT_YEAR 2017)
 
-## POSIX Thread Library
 find_package(Threads REQUIRED)
-
-## Make sure we can import our CMake functions
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-
-## Include helpers
-include(AddCCompilerFlag)
-include(AddCXXCompilerFlag)
-include(DetermineTargetArchitecture)
+find_package(LibDl REQUIRED)
+find_package(LibReadline REQUIRED)
 
 set(CMAKE_BUILD_TYPE Release)
 add_c_compiler_flag(-Wall)
@@ -50,19 +43,25 @@ link_directories($ENV{INSTALL_PREFIX}/lib)
 
 ## Example CLI Target
 add_executable(cli_app ${CMAKE_CURRENT_SOURCE_DIR}/cli/sample_app.c)
+#target_link_libraries(cli_app PRIVATE -ldl)
+target_link_libraries(cli_app PRIVATE -lreadline)
 target_link_libraries(cli_app PUBLIC limpid)
 target_link_libraries(cli_app PUBLIC ${CMAKE_THREAD_LIBS_INIT})
 
 add_executable(cli_prompt ${CMAKE_CURRENT_SOURCE_DIR}/cli/client.c)
+#target_link_libraries(cli_prompt PRIVATE -ldl)
+target_link_libraries(cli_prompt PRIVATE -lreadline)
 target_link_libraries(cli_prompt PUBLIC limpid)
 target_link_libraries(cli_prompt PUBLIC ${CMAKE_THREAD_LIBS_INIT})
 
 ## Example JSON Target
 add_executable(json_app ${CMAKE_CURRENT_SOURCE_DIR}/json/sample_app.c)
+target_link_libraries(json_app PRIVATE -lreadline)
 target_link_libraries(json_app PUBLIC limpid)
 target_link_libraries(json_app PUBLIC ${CMAKE_THREAD_LIBS_INIT})
 
 add_executable(json_prompt ${CMAKE_CURRENT_SOURCE_DIR}/json/client.c)
+target_link_libraries(json_prompt PRIVATE -lreadline)
 target_link_libraries(json_prompt PUBLIC limpid)
 target_link_libraries(json_prompt PUBLIC ${CMAKE_THREAD_LIBS_INIT})
 

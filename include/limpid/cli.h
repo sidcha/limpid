@@ -30,6 +30,7 @@
 #define _LIMPID_CLI_H
 
 #include <limpid/common.h>
+#include <string.h>
 
 #define LIMPID_REG_CLI(x,y)     \
 ({                              \
@@ -39,6 +40,12 @@
     h.cli_handle=y;             \
     limpid_register(&h);        \
 })
+
+#define LIMPID_SUB_CMD(s, m, r) do {                         \
+        if (argc >= 1 && strcmp(argv[0],s)==0) {             \
+            return m(argc-1, argv+1, r);                     \
+        }                                                    \
+    } while(0)
 
 int limpid_read_cli_cmd(const char *prompt, char **trigger, char **args);
 int limpid_send_cli_cmd(char *trigger, char*args, char **resp);
