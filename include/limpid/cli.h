@@ -47,7 +47,6 @@
         }                                                    \
     } while(0)
 
-int limpid_read_cli_cmd(const char *prompt, char **trigger, char **args);
 int limpid_send_cli_cmd(char *trigger, char*args, char **resp);
 
 #endif

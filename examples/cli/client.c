@@ -29,8 +29,53 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 
 #include <limpid/cli.h>
+
+int limpid_read_cli_cmd(const char *prompt, char **trigger, char **args)
+{
+    int i, j, ret;
+    char *line, tmp[128];
+
+    do {
+        i = 0; j = 0; ret = 0;
+        *trigger = NULL; *args = NULL;
+
+        if ((line = readline(prompt)) == NULL)
+            return 0;
+
+        if (line && (strlen(line) == 0))
+            break;
+
+        /* copy first word (trigger) */
+        while (line[i] && line[i] == ' ') i++;    /* skip leading WS */
+        while (line[i] && line[i] != ' ')
+            tmp[j++] = line[i++];        /* copy non-WS chars */
+        while (line[i] && line[i] == ' ') i++;    /* skip tailing WS */
+
+        if (j == 0) break;
+
+        tmp[j] = 0;
+
+        if (strcmp(tmp, "exit") == 0) {
+            ret = -1;
+            break;
+        }
+
+        *trigger = strdup(tmp);
+
+        if (strlen(line + i))
+            *args = strdup(line + i);
+        ret = strlen(tmp);
+
+    } while(0);
+
+    free(line);
+
+    return ret;
+}
 
 int main(int argc, char *argv[])
 {
