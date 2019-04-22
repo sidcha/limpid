@@ -41,9 +41,9 @@
     limpid_register(&h);        \
 })
 
-#define LIMPID_SUB_CMD(s, m, r) do {                         \
+#define LIMPID_SUB_CMD(s, m) do {                            \
         if (argc >= 1 && strcmp(argv[0],s)==0) {             \
-            return m(argc-1, argv+1, r);                     \
+            return m(argc-1, argv+1, resp);                  \
         }                                                    \
     } while(0)
 

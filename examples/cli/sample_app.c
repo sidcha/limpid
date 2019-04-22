@@ -54,8 +54,8 @@ int cmd_fluff_foo(int argc, char *argv[], string_t **resp)
 
 int cmd_do_fluff(int argc, char *argv[], string_t **resp)
 {
-    LIMPID_SUB_CMD("foo", cmd_fluff_foo, resp);
-    LIMPID_SUB_CMD("ping", cmd_ping, resp);
+    LIMPID_SUB_CMD("foo", cmd_fluff_foo);
+    LIMPID_SUB_CMD("ping", cmd_ping);
     printf("Server got the fluff command.\n");
     return 0;
 }
@@ -69,6 +69,7 @@ int main(int argc, char *argv[])
 
     while (1) {
         // Your application code!
+        usleep(100);
     }
 
     return 0;
